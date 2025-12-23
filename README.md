@@ -58,7 +58,8 @@ Building with MCP today feels like 1990s web development without a browser conso
 | Transport | Status | Use Case |
 |-----------|--------|----------|
 | **stdio** | Production Ready | Process-based MCP servers (Claude Desktop, Cursor, Cline) |
-| **HTTP/SSE** | Production Ready | Web-based and cloud-hosted MCP servers |
+| **Streamable HTTP** | Production Ready | Modern MCP servers (2025-03-26 spec) with bidirectional HTTP |
+| **HTTP/SSE** | Production Ready | Legacy web-based MCP servers (2024-11-05 spec) |
 
 ---
 
@@ -302,7 +303,8 @@ just build    # Desktop app (macOS/Linux/Windows)
 
 ### Completed
 - [x] stdio transport (production ready)
-- [x] HTTP/SSE transport for web-based MCP servers
+- [x] Streamable HTTP transport (MCP 2025-03-26 spec)
+- [x] HTTP/SSE transport for web-based MCP servers (legacy)
 - [x] Real-time message interception with zero-latency proxy
 - [x] JSON-RPC parsing and syntax-highlighted display
 - [x] Request/response correlation with one-click navigation

@@ -2,7 +2,7 @@ use tauri::{AppHandle, State};
 use tokio::process::Command;
 
 use crate::commands::demo::load_demo_data;
-use crate::core::{run_proxy, start_sse_proxy, TransportConfig};
+use crate::core::{run_proxy, start_sse_proxy, start_streamable_proxy, TransportConfig};
 use crate::error::AppError;
 use crate::events::session_events::emit_session_start;
 use crate::state::AppState;
@@ -253,7 +253,7 @@ pub async fn start_proxy_v2(
         } => {
             eprintln!("[HTTP PROXY] Starting on port {proxy_port} -> {server_url}");
 
-            // Start SSE proxy server
+            // Start SSE proxy server (legacy transport)
             let recorder_clone = state.recorder.clone();
             match start_sse_proxy(
                 server_url.clone(),
@@ -276,6 +276,40 @@ pub async fn start_proxy_v2(
                 }
                 Err(e) => {
                     eprintln!("[HTTP PROXY ERROR] Failed to start: {e}");
+                    Err(e)
+                }
+            }
+        }
+
+        TransportConfig::Streamable {
+            server_url,
+            proxy_port,
+        } => {
+            eprintln!("[STREAMABLE PROXY] Starting on port {proxy_port} -> {server_url}");
+
+            // Start Streamable HTTP proxy server (MCP 2025-03-26)
+            let recorder_clone = state.recorder.clone();
+            match start_streamable_proxy(
+                server_url.clone(),
+                proxy_port,
+                session_id.clone(),
+                app_handle.clone(),
+                recorder_clone,
+            )
+            .await
+            {
+                Ok(_handle) => {
+                    // Store HTTP proxy URL for interaction support
+                    let proxy_url = format!("http://localhost:{proxy_port}");
+                    proxy_state.start_with_http(session_id.clone(), proxy_url);
+                    drop(proxy_state); // Release lock
+
+                    Ok(format!(
+                        "Streamable HTTP proxy started on port {proxy_port} -> {server_url}"
+                    ))
+                }
+                Err(e) => {
+                    eprintln!("[STREAMABLE PROXY ERROR] Failed to start: {e}");
                     Err(e)
                 }
             }
