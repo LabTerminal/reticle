@@ -1,3 +1,4 @@
+use crate::core::TokenCounter;
 use crate::events::{LogEvent, SessionStartEvent};
 
 /// Pre-filled mock data for demo mode
@@ -19,12 +20,13 @@ impl MockData {
         let mut logs = Vec::new();
         let mut log_id_counter = 0;
 
-        // Helper to create log entries
+        // Helper to create log entries with token counting
         let mut add_log = |offset_ms: u64,
                            direction: &str,
                            content: String,
                            method: Option<&str>,
                            duration: Option<u64>| {
+            let token_count = TokenCounter::estimate_tokens(&content);
             logs.push(LogEvent {
                 id: format!("log-{log_id_counter}"),
                 session_id: session_id.clone(),
@@ -33,6 +35,7 @@ impl MockData {
                 content,
                 method: method.map(|s| s.to_string()),
                 duration_micros: duration,
+                token_count,
             });
             log_id_counter += 1;
         };

@@ -13,6 +13,9 @@ pub struct LogEvent {
     pub content: String,
     pub method: Option<String>,
     pub duration_micros: Option<u64>,
+    /// Estimated token count for this message
+    #[serde(default)]
+    pub token_count: u64,
 }
 
 /// Emit a log event to the frontend
