@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use crate::config::AppConfig;
-use crate::core::SessionRecorder;
+use crate::core::{SessionRecorder, TokenCounter};
 use crate::state::ProxyState;
 use crate::storage::SessionStorage;
 
@@ -23,6 +23,9 @@ pub struct AppState {
 
     /// Session storage backend
     pub storage: Arc<SessionStorage>,
+
+    /// Token counter for context profiling
+    pub token_counter: Arc<TokenCounter>,
 }
 
 impl AppState {
@@ -38,6 +41,7 @@ impl AppState {
             config: AppConfig::new(),
             recorder: Arc::new(Mutex::new(None)),
             storage: Arc::new(storage),
+            token_counter: Arc::new(TokenCounter::new()),
         }
     }
 
@@ -53,6 +57,7 @@ impl AppState {
             config,
             recorder: Arc::new(Mutex::new(None)),
             storage: Arc::new(storage),
+            token_counter: Arc::new(TokenCounter::new()),
         }
     }
 
