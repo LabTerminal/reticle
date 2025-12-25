@@ -80,3 +80,62 @@ export interface GlobalTokenStats {
   total_tokens: number
   sessions: Record<string, SessionTokenStats>
 }
+
+/** Individual tool token information */
+export interface ToolTokenInfo {
+  name: string
+  description: string
+  name_tokens: number
+  description_tokens: number
+  schema_tokens: number
+  total_tokens: number
+}
+
+/** Tools analysis */
+export interface ToolsAnalysis {
+  count: number
+  total_tokens: number
+  tools: ToolTokenInfo[]
+}
+
+/** Individual prompt token information */
+export interface PromptTokenInfo {
+  name: string
+  description?: string
+  total_tokens: number
+}
+
+/** Prompts analysis */
+export interface PromptsAnalysis {
+  count: number
+  total_tokens: number
+  prompts: PromptTokenInfo[]
+}
+
+/** Individual resource token information */
+export interface ResourceTokenInfo {
+  uri: string
+  name: string
+  description?: string
+  total_tokens: number
+}
+
+/** Resources analysis */
+export interface ResourcesAnalysis {
+  count: number
+  total_tokens: number
+  resources: ResourceTokenInfo[]
+}
+
+/** MCP Server analysis result */
+export interface ServerAnalysis {
+  server_name: string
+  server_version: string
+  protocol_version: string
+  total_context_tokens: number
+  tools: ToolsAnalysis
+  prompts: PromptsAnalysis
+  resources: ResourcesAnalysis
+  token_breakdown: Record<string, number>
+  analyzed_at: number
+}

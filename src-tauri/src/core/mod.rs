@@ -9,9 +9,11 @@
 //! - `transport`: Transport configuration and error types
 //! - `session_recorder`: Session recording and replay
 //! - `token_counter`: Token counting and context profiling
+//! - `server_analyzer`: MCP server context analysis
 
 pub mod protocol;
 pub mod proxy;
+pub mod server_analyzer;
 pub mod session_recorder;
 pub mod sse_proxy;
 pub mod streamable_proxy;

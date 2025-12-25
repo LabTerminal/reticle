@@ -22,6 +22,6 @@ pub use recording::{
     load_recorded_session, start_recording, stop_recording,
 };
 pub use tokens::{
-    clear_all_token_stats, clear_session_token_stats, estimate_tokens, get_global_token_stats,
-    get_session_token_stats,
+    analyze_mcp_server, clear_all_token_stats, clear_session_token_stats, estimate_tokens,
+    get_global_token_stats, get_session_token_stats,
 };
