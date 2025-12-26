@@ -163,6 +163,18 @@ const LogRow = memo(({ log }: { log: LogEntry; index: number }) => {
         {summary}
       </span>
 
+      {/* Token count */}
+      {log.token_count !== undefined && log.token_count > 0 && (
+        <span
+          className="text-[10px] font-mono flex-shrink-0 px-1.5 py-0.5 rounded bg-[#F59E0B]/10 text-[#F59E0B] tabular-nums"
+          title={`Estimated ${log.token_count.toLocaleString()} tokens`}
+        >
+          {log.token_count >= 1000
+            ? `${(log.token_count / 1000).toFixed(1)}k`
+            : log.token_count}
+        </span>
+      )}
+
       {/* Latency (Premium color scale) */}
       {(actualLatency !== null || log.duration_micros !== undefined) && (
         <span

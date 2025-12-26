@@ -59,6 +59,9 @@ pub struct LogEntry {
     /// Type of message content (jsonrpc, raw, stderr)
     #[serde(default)]
     pub message_type: MessageType,
+    /// Estimated token count for this message
+    #[serde(default)]
+    pub token_count: u64,
 }
 
 impl LogEntry {
@@ -77,6 +80,9 @@ impl LogEntry {
         let method = extract_method(&content);
         let content_str = serde_json::to_string(&content).unwrap_or_default();
 
+        // Count LLM-relevant tokens (extracts payload, not JSON-RPC overhead)
+        let token_count = super::token_counter::TokenCounter::count_mcp_context_tokens(&content);
+
         Self {
             id,
             session_id,
@@ -86,6 +92,7 @@ impl LogEntry {
             method,
             duration_micros: None,
             message_type: MessageType::JsonRpc,
+            token_count,
         }
     }
 
@@ -102,6 +109,9 @@ impl LogEntry {
             .unwrap_or_default()
             .as_micros() as u64;
 
+        // Estimate token count for raw content
+        let token_count = super::token_counter::TokenCounter::estimate_tokens(&content);
+
         Self {
             id,
             session_id,
@@ -111,6 +121,7 @@ impl LogEntry {
             method: None,
             duration_micros: None,
             message_type,
+            token_count,
         }
     }
 }

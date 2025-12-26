@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
-import { Database, Trash2 } from 'lucide-react'
+import { Database, Trash2, Coins } from 'lucide-react'
 import { toast } from 'sonner'
 import { useReticleStore } from '@/store'
 import { Button } from '@/components/ui/button'
@@ -67,6 +67,41 @@ export function Sidebar() {
     return { incoming, outgoing }
   }, [logs])
 
+  // Calculate token statistics
+  const tokenStats = useMemo(() => {
+    let totalTokens = 0
+    let tokensToServer = 0
+    let tokensFromServer = 0
+    const tokensByMethod: Record<string, number> = {}
+
+    logs.forEach((log) => {
+      const tokens = log.token_count || 0
+      totalTokens += tokens
+
+      if (log.direction === 'in') {
+        tokensToServer += tokens
+      } else {
+        tokensFromServer += tokens
+      }
+
+      if (log.method) {
+        tokensByMethod[log.method] = (tokensByMethod[log.method] || 0) + tokens
+      }
+    })
+
+    // Sort methods by token count
+    const topMethods = Object.entries(tokensByMethod)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+
+    return {
+      totalTokens,
+      tokensToServer,
+      tokensFromServer,
+      topMethods,
+    }
+  }, [logs])
+
   return (
     <div className="flex flex-col h-full bg-background border-r border-border overflow-hidden">
       {/* Header - Premium Branding */}
@@ -121,6 +156,58 @@ export function Sidebar() {
               </div>
             </div>
           </div>
+
+          {/* Token Profiling - Context Usage */}
+          {tokenStats.totalTokens > 0 && (
+            <div>
+              <h3 className="text-[10px] font-semibold mb-2 text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <Coins className="w-3 h-3" />
+                Token Usage
+              </h3>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-muted-foreground">Total Tokens</span>
+                  <span className="font-mono font-bold text-[#F59E0B] tabular-nums">
+                    {tokenStats.totalTokens.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-muted-foreground">→ To Server</span>
+                  <span className="font-mono font-medium text-[#3B82F6] tabular-nums">
+                    {tokenStats.tokensToServer.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-muted-foreground">← From Server</span>
+                  <span className="font-mono font-medium text-[#10B981] tabular-nums">
+                    {tokenStats.tokensFromServer.toLocaleString()}
+                  </span>
+                </div>
+
+                {/* Top methods by tokens */}
+                {tokenStats.topMethods.length > 0 && (
+                  <div className="pt-2 border-t border-border/50">
+                    <p className="text-[10px] text-muted-foreground mb-1.5">Top by tokens</p>
+                    <div className="space-y-1">
+                      {tokenStats.topMethods.map(([method, tokens]) => (
+                        <div
+                          key={method}
+                          className="flex items-center justify-between text-[10px]"
+                        >
+                          <span className="font-mono text-muted-foreground truncate max-w-[120px]">
+                            {method}
+                          </span>
+                          <span className="font-mono text-[#F59E0B] tabular-nums">
+                            {tokens.toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Messages Per Second Chart - Premium Style */}
           <div>

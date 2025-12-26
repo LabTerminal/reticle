@@ -48,6 +48,7 @@ Building with MCP today feels like 1990s web development without a browser conso
 | **Deep Packet Inspection** | See raw JSON-RPC messages (requests, notifications, responses) in real-time. Syntax-highlighted with Monaco editor. |
 | **Request/Response Correlation** | Automatically links responses to their originating requests. Jump between correlated messages with one click. |
 | **Latency Profiling** | Color-coded latency indicators. Red (>1s), Orange (>200ms), Green (<50ms). Identify slow tools instantly. |
+| **Token Profiling** | Real-time token estimation for every message. See context consumption per method, identify token-heavy tools. |
 | **Stderr Capture** | Server crashes, Python tracebacks, debug prints — all captured and displayed separately from JSON-RPC traffic. |
 | **Multi-Session Support** | Debug 10 MCP servers simultaneously. Filter by session, method, or direction. |
 | **Session Recording** | Capture complete sessions with timing data. Export to JSON for analysis or replay. |
@@ -318,6 +319,7 @@ just build    # Desktop app (macOS/Linux/Windows)
 - [x] Dark/Light theme with premium UI
 - [x] Session recording (capture messages with timing)
 - [x] Log export (JSON format)
+- [x] Context token profiling per message and method
 
 ### In Progress
 - [ ] Session tagging for multi-server debugging
@@ -327,7 +329,6 @@ just build    # Desktop app (macOS/Linux/Windows)
 - [ ] Security firewall (block/allow specific methods)
 - [ ] Traffic replay and request modification
 - [ ] Session playback (replay recorded sessions)
-- [ ] Context token profiling per server
 - [ ] Multi-agent topology view
 - [ ] npm/Homebrew distribution
 
