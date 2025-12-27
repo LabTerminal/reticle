@@ -424,7 +424,7 @@ export function Sidebar() {
 
           {/* Quick Tag Input for Current Session */}
           {currentSession && (
-            <QuickTagInput sessionId={currentSession.id} />
+            <QuickTagInput sessionId={currentSession.id} localOnly />
           )}
 
           {/* Actions */}

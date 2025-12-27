@@ -245,9 +245,11 @@ export function TagFilter({ selectedTags, onSelectTags }: TagFilterProps) {
 
 interface QuickTagInputProps {
   sessionId: string
+  /** If true, only update local store (for demo mode) */
+  localOnly?: boolean
 }
 
-export function QuickTagInput({ sessionId }: QuickTagInputProps) {
+export function QuickTagInput({ sessionId, localOnly = false }: QuickTagInputProps) {
   const [newTag, setNewTag] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const { updateSessionTags, setAvailableTags, availableTags, sessions } = useReticleStore()
@@ -266,10 +268,13 @@ export function QuickTagInput({ sessionId }: QuickTagInputProps) {
 
     setIsLoading(true)
     try {
-      await invoke('add_session_tags', {
-        sessionId,
-        tags: [tagToAdd],
-      })
+      // Only call backend if not in local-only mode
+      if (!localOnly) {
+        await invoke('add_session_tags', {
+          sessionId,
+          tags: [tagToAdd],
+        })
+      }
 
       const updatedTags = [...currentTags, tagToAdd]
       updateSessionTags(sessionId, updatedTags)
@@ -290,10 +295,13 @@ export function QuickTagInput({ sessionId }: QuickTagInputProps) {
   const handleRemoveTag = async (tag: string) => {
     setIsLoading(true)
     try {
-      await invoke('remove_session_tags', {
-        sessionId,
-        tags: [tag],
-      })
+      // Only call backend if not in local-only mode
+      if (!localOnly) {
+        await invoke('remove_session_tags', {
+          sessionId,
+          tags: [tag],
+        })
+      }
 
       const updatedTags = currentTags.filter((t) => t !== tag)
       updateSessionTags(sessionId, updatedTags)
