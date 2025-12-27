@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
-import { Database, Trash2, Coins, ChevronDown, ChevronRight } from 'lucide-react'
-import { toast } from 'sonner'
+import { Database, Coins, ChevronDown, ChevronRight } from 'lucide-react'
 import { useReticleStore } from '@/store'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -17,7 +16,6 @@ export function Sidebar() {
     setCurrentSession,
     isConnected,
     logs,
-    clearLogs,
     filters,
     setFilters,
   } = useReticleStore()
@@ -277,7 +275,7 @@ export function Sidebar() {
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Filters
               </h3>
-              {(filters.method || filters.direction || filters.serverName || (filters.tags && filters.tags.length > 0)) && (
+              {(filters.method || filters.direction || filters.serverName || filters.minLatencyMs || (filters.tags && filters.tags.length > 0)) && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -339,6 +337,39 @@ export function Sidebar() {
                     {directionCounts.outgoing}
                   </span>
                 </Button>
+              </div>
+            </div>
+
+            {/* Latency Filter */}
+            <div className="space-y-2 mb-3">
+              <p className="text-xs text-muted-foreground">Min Latency</p>
+              <div className="flex gap-1.5">
+                {[
+                  { label: '>50ms', value: 50 },
+                  { label: '>200ms', value: 200 },
+                  { label: '>1s', value: 1000 },
+                ].map(({ label, value }) => (
+                  <Button
+                    key={value}
+                    variant={filters.minLatencyMs === value ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() =>
+                      setFilters({
+                        minLatencyMs: filters.minLatencyMs === value ? undefined : value,
+                      })
+                    }
+                    className={cn(
+                      'flex-1 h-8 text-xs px-2',
+                      filters.minLatencyMs === value && value >= 1000
+                        ? 'bg-[#DC2626] hover:bg-[#DC2626]/90 dark:bg-[#FF003C] dark:hover:bg-[#FF003C]/90'
+                        : filters.minLatencyMs === value && value >= 200
+                        ? 'bg-[#D97706] hover:bg-[#D97706]/90 dark:bg-[#FCEE09] dark:hover:bg-[#FCEE09]/90 dark:text-black'
+                        : ''
+                    )}
+                  >
+                    {label}
+                  </Button>
+                ))}
               </div>
             </div>
 
@@ -405,8 +436,8 @@ export function Sidebar() {
                           {session.message_count} msgs
                         </span>
                       </div>
-                      <div className="text-[10px] font-mono mt-1 truncate">
-                        {session.id}
+                      <div className="text-[11px] font-medium mt-1 truncate text-foreground">
+                        {session.name || `Session ${session.id.slice(-8)}`}
                       </div>
                       {/* Server name badge */}
                       {session.server_name && (
@@ -440,28 +471,6 @@ export function Sidebar() {
           {currentSession && (
             <QuickTagInput sessionId={currentSession.id} localOnly />
           )}
-
-          {/* Actions */}
-          <div>
-            <h3 className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wider">
-              Actions
-            </h3>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                clearLogs()
-                toast.success('All logs cleared', {
-                  duration: 2000,
-                })
-              }}
-              disabled={logs.length === 0}
-              className="w-full"
-            >
-              <Trash2 className="w-3 h-3 mr-2" />
-              Clear Logs
-            </Button>
-          </div>
         </div>
       </ScrollArea>
     </div>

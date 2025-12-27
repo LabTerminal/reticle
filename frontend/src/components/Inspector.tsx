@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import Editor from '@monaco-editor/react'
-import { Copy, Check, FileJson, Info, ArrowRight, AlertTriangle, Terminal, Play, Pencil, X, Send } from 'lucide-react'
+import { Copy, Check, FileJson, ArrowRight, AlertTriangle, Terminal, Play, Pencil, X, Send } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   useReticleStore,
@@ -281,9 +281,12 @@ export function Inspector() {
               </span>
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground font-medium">Session ID</span>
-              <span className="font-mono text-muted-foreground text-[11px] truncate max-w-[180px]">
-                {selectedLog.session_id}
+              <span className="text-muted-foreground font-medium">Session</span>
+              <span
+                className="font-mono text-muted-foreground text-[11px] truncate max-w-[180px]"
+                title={selectedLog.session_id}
+              >
+                ...{selectedLog.session_id.slice(-8)}
               </span>
             </div>
             {(latency !== null || selectedLog.duration_micros !== undefined) && (
@@ -377,10 +380,17 @@ export function Inspector() {
         </div>
       ) : (
         <div className="flex items-center justify-center h-full">
-          <div className="text-center">
-            <Info className="w-10 h-10 mx-auto mb-3 text-muted-foreground/50" />
-            <p className="text-sm text-muted-foreground font-medium">No message selected</p>
-            <p className="text-[11px] text-muted-foreground/70 mt-1">Click on a message to inspect</p>
+          <div className="text-center max-w-xs">
+            <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-muted/50 flex items-center justify-center">
+              <FileJson className="w-6 h-6 text-muted-foreground/50" />
+            </div>
+            <p className="text-sm text-foreground font-medium mb-1">Select a message</p>
+            <p className="text-xs text-muted-foreground">
+              Click any message in the stream to view its full JSON content, metadata, and latency info.
+            </p>
+            <p className="text-[11px] text-muted-foreground/60 mt-3">
+              Use <kbd className="px-1 py-0.5 bg-muted border border-border rounded text-[10px] font-mono">↑</kbd> <kbd className="px-1 py-0.5 bg-muted border border-border rounded text-[10px] font-mono">↓</kbd> to navigate
+            </p>
           </div>
         </div>
       )}

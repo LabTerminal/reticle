@@ -30,7 +30,8 @@ use commands::{
     get_all_server_names, get_all_tags, get_global_token_stats, get_mcp_methods,
     get_recording_status, get_session_metadata, get_session_token_stats, list_recorded_sessions,
     list_sessions_filtered, load_recorded_session, remove_session_tags, send_raw_message,
-    send_request, start_proxy, start_proxy_v2, start_recording, stop_proxy, stop_recording,
+    send_request, start_proxy, start_proxy_v2, start_recording, start_remote_proxy, stop_proxy,
+    stop_recording,
 };
 use state::AppState;
 
@@ -54,6 +55,7 @@ fn main() {
             start_proxy,
             stop_proxy,
             start_proxy_v2,
+            start_remote_proxy,
             start_recording,
             stop_recording,
             get_recording_status,

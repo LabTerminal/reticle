@@ -1,31 +1,27 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Play, Pause, Settings, Loader2, RotateCcw, Circle, Database, Download, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { useReticleStore } from '@/store'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { save } from '@tauri-apps/plugin-dialog'
 import { ThemeToggle } from '@/components/ThemeToggle'
-import { useEffect } from 'react'
 
 // Transport type definitions
-type TransportType = 'stdio' | 'http'
-
-interface StdioConfig {
-  type: 'stdio'
-  command: string
-  args: string[]
-}
-
-interface HttpConfig {
-  type: 'http'
-  server_url: string
-  proxy_port: number
-}
-
-type TransportConfig = StdioConfig | HttpConfig
+type TransportType = 'stdio' | 'remote'
 
 interface RecordedSession {
   id: string
@@ -53,6 +49,7 @@ export function ControlBar() {
   const [isRecordingLoading, setIsRecordingLoading] = useState(false)
   const [recordedSessions, setRecordedSessions] = useState<RecordedSession[]>([])
   const [showSessions, setShowSessions] = useState(false)
+  const [sessionToDelete, setSessionToDelete] = useState<RecordedSession | null>(null)
 
   const { clearLogs } = useReticleStore()
 
@@ -135,8 +132,9 @@ export function ControlBar() {
       setIsProxyRunning(true)
       toast.success('Demo started successfully')
     } catch (error) {
+      console.error('Demo start error:', error)
       toast.error('Failed to start demo', {
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: typeof error === 'string' ? error : (error instanceof Error ? error.message : String(error)),
       })
     } finally {
       setIsProxyLoading(false)
@@ -146,28 +144,39 @@ export function ControlBar() {
   const startProxy = async () => {
     setIsProxyLoading(true)
     try {
-      let transportConfig: TransportConfig
-
       if (transportType === 'stdio') {
+        // Use stdio transport via start_proxy_v2
         const argsList = args.split(' ').filter((a) => a.trim())
-        transportConfig = { type: 'stdio', command, args: argsList }
+        const transportConfig = { type: 'stdio', command, args: argsList }
+        const invokeArgs: { transportConfig: typeof transportConfig; sessionName?: string } = { transportConfig }
+        if (sessionName.trim()) {
+          invokeArgs.sessionName = sessionName.trim()
+        }
+        await invoke('start_proxy_v2', invokeArgs)
       } else {
-        transportConfig = { type: 'http', server_url: serverUrl, proxy_port: proxyPort }
+        // Use remote transport with auto-detection via start_remote_proxy
+        const invokeArgs: {
+          serverUrl: string
+          proxyPort: number
+          sessionName?: string
+          useLegacySse?: boolean
+        } = {
+          serverUrl,
+          proxyPort,
+        }
+        if (sessionName.trim()) {
+          invokeArgs.sessionName = sessionName.trim()
+        }
+        await invoke('start_remote_proxy', invokeArgs)
       }
 
-      // Pass session name if provided, otherwise backend generates default
-      const invokeArgs: { transportConfig: TransportConfig; sessionName?: string } = { transportConfig }
-      if (sessionName.trim()) {
-        invokeArgs.sessionName = sessionName.trim()
-      }
-      await invoke('start_proxy_v2', invokeArgs)
       setIsProxyRunning(true)
       toast.success('Proxy started successfully')
       setShowConfig(false)
       setSessionName('') // Reset for next session
     } catch (error) {
       toast.error('Failed to start proxy', {
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: error instanceof Error ? error.message : String(error),
       })
     } finally {
       setIsProxyLoading(false)
@@ -286,6 +295,28 @@ export function ControlBar() {
             <span className="text-xs">Demo</span>
           </Button>
 
+          {/* Transport Toggle - Surfaced for quick access */}
+          <div className="flex items-center bg-muted/50 rounded-md p-0.5">
+            <Button
+              onClick={() => setTransportType('stdio')}
+              disabled={isProxyRunning}
+              size="sm"
+              variant={transportType === 'stdio' ? 'default' : 'ghost'}
+              className="h-7 px-2 text-xs rounded-sm"
+            >
+              Stdio
+            </Button>
+            <Button
+              onClick={() => setTransportType('remote')}
+              disabled={isProxyRunning}
+              size="sm"
+              variant={transportType === 'remote' ? 'default' : 'ghost'}
+              className="h-7 px-2 text-xs rounded-sm"
+            >
+              Remote
+            </Button>
+          </div>
+
           <div className="relative">
             <Button
               onClick={() => setShowConfig(!showConfig)}
@@ -295,31 +326,12 @@ export function ControlBar() {
               className="h-8 gap-1.5"
             >
               <Settings className="h-3.5 w-3.5" />
-              <span className="text-xs">Proxy</span>
+              <span className="text-xs">Config</span>
             </Button>
 
             {showConfig && (
               <div className="absolute top-full left-0 mt-1 z-[100] w-80 bg-card border border-border rounded-lg shadow-lg p-3">
                 <div className="space-y-3">
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => setTransportType('stdio')}
-                      size="sm"
-                      variant={transportType === 'stdio' ? 'default' : 'outline'}
-                      className="flex-1 h-7 text-xs"
-                    >
-                      Stdio
-                    </Button>
-                    <Button
-                      onClick={() => setTransportType('http')}
-                      size="sm"
-                      variant={transportType === 'http' ? 'default' : 'outline'}
-                      className="flex-1 h-7 text-xs"
-                    >
-                      HTTP/SSE
-                    </Button>
-                  </div>
-
                   {transportType === 'stdio' ? (
                     <>
                       <Input
@@ -340,14 +352,17 @@ export function ControlBar() {
                       <Input
                         value={serverUrl}
                         onChange={(e) => setServerUrl(e.target.value)}
-                        placeholder="Server URL"
+                        placeholder="Server URL (http://, https://, ws://)"
                         className="h-8 text-xs"
                       />
+                      <div className="text-xs text-muted-foreground">
+                        Transport auto-detected from URL scheme
+                      </div>
                       <Input
                         type="number"
                         value={proxyPort}
                         onChange={(e) => setProxyPort(parseInt(e.target.value))}
-                        placeholder="Proxy Port"
+                        placeholder="Local proxy port"
                         className="h-8 text-xs"
                       />
                     </>
@@ -386,15 +401,30 @@ export function ControlBar() {
             </Button>
           )}
 
-          <Button
-            onClick={clearLogs}
-            size="sm"
-            variant="ghost"
-            className="h-8 gap-1.5"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            <span className="text-xs">Clear</span>
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 gap-1.5"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span className="text-xs">Clear</span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Clear all logs?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will remove all captured messages from the current view. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={clearLogs}>Clear Logs</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
 
         {/* Center: Recording Controls */}
@@ -474,7 +504,7 @@ export function ControlBar() {
                               <Download className="h-3.5 w-3.5" />
                             </Button>
                             <Button
-                              onClick={() => deleteSession(session.id)}
+                              onClick={() => setSessionToDelete(session)}
                               size="sm"
                               variant="ghost"
                               className="h-7 w-7 p-0 text-[#FF003C] hover:text-[#FF003C]/80"
@@ -495,6 +525,32 @@ export function ControlBar() {
         {/* Right: Theme Toggle */}
         <ThemeToggle />
       </div>
+
+      {/* Delete Session Confirmation Dialog */}
+      <AlertDialog open={!!sessionToDelete} onOpenChange={(open) => !open && setSessionToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete session?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete "{sessionToDelete?.name}" and all its recorded messages. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (sessionToDelete) {
+                  deleteSession(sessionToDelete.id)
+                  setSessionToDelete(null)
+                }
+              }}
+              className="bg-[#FF003C] hover:bg-[#FF003C]/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

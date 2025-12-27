@@ -35,6 +35,7 @@ export interface ParsedMessage {
 
 export interface Session {
   id: string
+  name?: string // User-friendly session name/alias
   started_at: number
   message_count: number
   last_activity: number
@@ -55,6 +56,7 @@ export interface FilterOptions {
   sessionId?: string
   serverName?: string // Filter by server name
   tags?: string[] // Filter by tags
+  minLatencyMs?: number // Filter by minimum latency (50, 200, 1000 ms)
 }
 
 /** Token statistics per method */

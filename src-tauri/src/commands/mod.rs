@@ -18,7 +18,7 @@ pub mod tokens;
 
 // Re-export command functions for use in main.rs
 pub use interaction::{can_interact, get_mcp_methods, send_raw_message, send_request};
-pub use proxy::{start_proxy, start_proxy_v2, stop_proxy};
+pub use proxy::{start_proxy, start_proxy_v2, start_remote_proxy, stop_proxy};
 pub use recording::{
     delete_recorded_session, export_session, get_recording_status, list_recorded_sessions,
     load_recorded_session, start_recording, stop_recording,

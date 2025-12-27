@@ -9,6 +9,7 @@
 //! - Supports both JSON responses and SSE streaming
 //! - Backwards compatible detection for legacy HTTP+SSE transport
 
+use axum::http::{HeaderValue, Method};
 use axum::{
     body::Body,
     extract::State,
@@ -27,7 +28,6 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
 use tokio::sync::{Mutex, RwLock};
-use axum::http::{HeaderValue, Method};
 use tower_http::cors::CorsLayer;
 use tracing::{debug, error, info, warn};
 

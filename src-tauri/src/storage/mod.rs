@@ -525,14 +525,23 @@ mod tests {
         storage.save_session(&session).await.unwrap();
 
         // Add tags
-        storage.add_session_tags("session-tags", vec!["prod".to_string(), "debug".to_string()]).await.unwrap();
+        storage
+            .add_session_tags(
+                "session-tags",
+                vec!["prod".to_string(), "debug".to_string()],
+            )
+            .await
+            .unwrap();
 
         let loaded = storage.load_session("session-tags").await.unwrap();
         assert_eq!(loaded.metadata.tags.len(), 2);
         assert!(loaded.metadata.tags.contains(&"prod".to_string()));
 
         // Remove a tag
-        storage.remove_session_tags("session-tags", vec!["debug".to_string()]).await.unwrap();
+        storage
+            .remove_session_tags("session-tags", vec!["debug".to_string()])
+            .await
+            .unwrap();
 
         let loaded = storage.load_session("session-tags").await.unwrap();
         assert_eq!(loaded.metadata.tags.len(), 1);

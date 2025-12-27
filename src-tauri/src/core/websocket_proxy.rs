@@ -10,6 +10,7 @@
 //! - Automatic reconnection handling
 //! - Message interception and logging
 
+use axum::http::{HeaderValue, Method};
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
@@ -26,7 +27,6 @@ use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
 use tokio::sync::{mpsc, Mutex, RwLock};
 use tokio_tungstenite::{connect_async, tungstenite::Message as TungsteniteMessage};
-use axum::http::{HeaderValue, Method};
 use tower_http::cors::CorsLayer;
 use tracing::{debug, error, info, warn};
 

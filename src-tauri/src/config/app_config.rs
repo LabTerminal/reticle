@@ -142,8 +142,14 @@ mod tests {
     fn test_demo_config_default() {
         let demo_config = DemoConfig::default();
 
-        assert_eq!(demo_config.session_id, super::super::defaults::DEFAULT_DEMO_SESSION_ID);
-        assert_eq!(demo_config.message_delay_ms, super::super::defaults::DEFAULT_DEMO_MESSAGE_DELAY_MS);
+        assert_eq!(
+            demo_config.session_id,
+            super::super::defaults::DEFAULT_DEMO_SESSION_ID
+        );
+        assert_eq!(
+            demo_config.message_delay_ms,
+            super::super::defaults::DEFAULT_DEMO_MESSAGE_DELAY_MS
+        );
     }
 
     #[test]

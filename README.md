@@ -315,10 +315,12 @@ just build    # Desktop app (macOS/Linux/Windows)
 - [x] Real-time message interception with zero-latency proxy
 - [x] JSON-RPC parsing and syntax-highlighted display
 - [x] Request/response correlation with one-click navigation
-- [x] Latency profiling with color-coded indicators
+- [x] Latency profiling with color-coded indicators (>50ms, >200ms, >1s thresholds)
+- [x] Latency filtering to surface slow requests
 - [x] Virtualized rendering (handles 10k+ messages)
 - [x] Stderr and raw output capture
 - [x] Multi-session support with filtering
+- [x] Session aliases/nicknames for easier identification
 - [x] Request Composer for manual JSON-RPC testing
 - [x] Dark/Light theme with premium UI
 - [x] Session recording (capture messages with timing)
@@ -326,6 +328,10 @@ just build    # Desktop app (macOS/Linux/Windows)
 - [x] Context token profiling per message and method
 - [x] Session tagging for organization and filtering
 - [x] Multi-server identification and filtering
+- [x] Keyboard shortcuts help modal (press ? to view)
+- [x] Confirmation dialogs for destructive actions (Clear Logs, Delete Session)
+- [x] Transport type toggle surfaced in control bar
+- [x] Improved empty state messaging with getting-started hints
 
 ### In Progress
 - [ ] Log export (CSV/HAR formats)
@@ -336,6 +342,7 @@ just build    # Desktop app (macOS/Linux/Windows)
 - [ ] Session playback (replay recorded sessions)
 - [ ] Multi-agent topology view
 - [ ] npm/Homebrew distribution
+- [ ] First-time user onboarding tour
 
 ---
 

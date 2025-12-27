@@ -10,6 +10,63 @@ use crate::events::session_events::emit_session_start;
 use crate::security::generate_secure_session_id;
 use crate::state::AppState;
 
+/// Detected transport type from URL analysis
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DetectedTransport {
+    /// WebSocket transport (ws:// or wss://)
+    WebSocket,
+    /// Streamable HTTP transport (http:// or https://, default for HTTP)
+    Streamable,
+    /// Legacy SSE transport (explicit fallback)
+    Sse,
+}
+
+/// Detect transport type from a URL
+///
+/// URL scheme detection:
+/// - `ws://` or `wss://` → WebSocket
+/// - `http://` or `https://` → Streamable HTTP (the newer 2025-03-26 spec)
+///
+/// The legacy SSE transport is not auto-detected but can be explicitly requested.
+fn detect_transport_from_url(url: &str) -> Result<DetectedTransport, String> {
+    let url_lower = url.to_lowercase();
+
+    if url_lower.starts_with("ws://") || url_lower.starts_with("wss://") {
+        Ok(DetectedTransport::WebSocket)
+    } else if url_lower.starts_with("http://") || url_lower.starts_with("https://") {
+        // Default to Streamable HTTP (newer spec, 2025-03-26)
+        // Legacy SSE is deprecated and requires explicit selection
+        Ok(DetectedTransport::Streamable)
+    } else {
+        Err(format!(
+            "Invalid URL scheme. Expected ws://, wss://, http://, or https://. Got: {}",
+            url
+        ))
+    }
+}
+
+/// Convert detected transport to TransportConfig
+fn create_transport_config(
+    detected: DetectedTransport,
+    server_url: String,
+    proxy_port: u16,
+) -> TransportConfig {
+    match detected {
+        DetectedTransport::WebSocket => TransportConfig::WebSocket {
+            server_url,
+            proxy_port,
+        },
+        DetectedTransport::Streamable => TransportConfig::Streamable {
+            server_url,
+            proxy_port,
+        },
+        DetectedTransport::Sse => TransportConfig::Http {
+            server_url,
+            proxy_port,
+        },
+    }
+}
+
 /// Legacy Tauri command to start the proxy/demo
 ///
 /// DEPRECATED: Use `start_proxy_v2` instead, which supports all transport types
@@ -293,5 +350,109 @@ pub async fn start_proxy_v2(
                 }
             }
         }
+    }
+}
+
+/// Tauri command to start a remote proxy with auto-detected transport
+///
+/// This is the simplified API for connecting to remote MCP servers.
+/// The transport type is automatically detected from the URL scheme:
+/// - `ws://` or `wss://` → WebSocket transport
+/// - `http://` or `https://` → Streamable HTTP transport (MCP 2025-03-26)
+///
+/// # Arguments
+/// * `server_url` - The URL of the MCP server (e.g., "http://localhost:8080" or "ws://localhost:9000")
+/// * `proxy_port` - The local port to run the proxy on
+/// * `session_name` - Optional human-readable name for the session
+/// * `use_legacy_sse` - If true, use legacy SSE transport instead of Streamable HTTP (for http:// URLs only)
+#[tauri::command]
+pub async fn start_remote_proxy(
+    server_url: String,
+    proxy_port: u16,
+    session_name: Option<String>,
+    use_legacy_sse: Option<bool>,
+    app_handle: AppHandle,
+    state: State<'_, AppState>,
+) -> std::result::Result<String, String> {
+    // Detect transport from URL
+    let mut detected = detect_transport_from_url(&server_url)?;
+
+    // Override to legacy SSE if explicitly requested (only for HTTP URLs)
+    if use_legacy_sse.unwrap_or(false) && detected == DetectedTransport::Streamable {
+        detected = DetectedTransport::Sse;
+    }
+
+    // Create transport config
+    let transport_config = create_transport_config(detected, server_url, proxy_port);
+
+    // Delegate to start_proxy_v2
+    start_proxy_v2(transport_config, session_name, app_handle, state).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_detect_transport_websocket() {
+        assert_eq!(
+            detect_transport_from_url("ws://localhost:9000").unwrap(),
+            DetectedTransport::WebSocket
+        );
+        assert_eq!(
+            detect_transport_from_url("wss://example.com/mcp").unwrap(),
+            DetectedTransport::WebSocket
+        );
+        assert_eq!(
+            detect_transport_from_url("WS://EXAMPLE.COM").unwrap(),
+            DetectedTransport::WebSocket
+        );
+    }
+
+    #[test]
+    fn test_detect_transport_http() {
+        assert_eq!(
+            detect_transport_from_url("http://localhost:8080").unwrap(),
+            DetectedTransport::Streamable
+        );
+        assert_eq!(
+            detect_transport_from_url("https://example.com/mcp").unwrap(),
+            DetectedTransport::Streamable
+        );
+        assert_eq!(
+            detect_transport_from_url("HTTP://EXAMPLE.COM").unwrap(),
+            DetectedTransport::Streamable
+        );
+    }
+
+    #[test]
+    fn test_detect_transport_invalid() {
+        assert!(detect_transport_from_url("ftp://example.com").is_err());
+        assert!(detect_transport_from_url("localhost:8080").is_err());
+        assert!(detect_transport_from_url("").is_err());
+    }
+
+    #[test]
+    fn test_create_transport_config() {
+        let config = create_transport_config(
+            DetectedTransport::WebSocket,
+            "ws://localhost:9000".to_string(),
+            3001,
+        );
+        assert!(matches!(config, TransportConfig::WebSocket { .. }));
+
+        let config = create_transport_config(
+            DetectedTransport::Streamable,
+            "http://localhost:8080".to_string(),
+            3001,
+        );
+        assert!(matches!(config, TransportConfig::Streamable { .. }));
+
+        let config = create_transport_config(
+            DetectedTransport::Sse,
+            "http://localhost:8080".to_string(),
+            3001,
+        );
+        assert!(matches!(config, TransportConfig::Http { .. }));
     }
 }

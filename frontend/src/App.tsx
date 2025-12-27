@@ -11,6 +11,7 @@ import { Inspector } from '@/components/Inspector'
 import { Sidebar } from '@/components/Sidebar'
 import { ControlBar } from '@/components/ControlBar'
 import { RequestComposer } from '@/components/RequestComposer'
+import { KeyboardShortcuts } from '@/components/KeyboardShortcuts'
 import { useReticleStore } from '@/store'
 import { useTheme } from '@/components/theme-provider'
 import { LogEntry } from '@/types'
@@ -94,6 +95,9 @@ function App() {
           className: 'font-sans text-sm',
         }}
       />
+
+      {/* Keyboard Shortcuts Help Modal */}
+      <KeyboardShortcuts />
 
       {/* Unified Control Bar */}
       <ControlBar />

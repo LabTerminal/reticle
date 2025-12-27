@@ -300,8 +300,14 @@ mod tests {
     fn test_mock_data_has_initialize_handshake() {
         let data = MockData::generate();
 
-        let has_initialize = data.logs.iter().any(|l| l.method == Some("initialize".to_string()));
-        let has_initialized = data.logs.iter().any(|l| l.method == Some("initialized".to_string()));
+        let has_initialize = data
+            .logs
+            .iter()
+            .any(|l| l.method == Some("initialize".to_string()));
+        let has_initialized = data
+            .logs
+            .iter()
+            .any(|l| l.method == Some("initialized".to_string()));
 
         assert!(has_initialize, "Should have initialize request");
         assert!(has_initialized, "Should have initialized notification");
@@ -311,7 +317,10 @@ mod tests {
     fn test_mock_data_has_tools_list() {
         let data = MockData::generate();
 
-        let has_tools_list = data.logs.iter().any(|l| l.method == Some("tools/list".to_string()));
+        let has_tools_list = data
+            .logs
+            .iter()
+            .any(|l| l.method == Some("tools/list".to_string()));
 
         assert!(has_tools_list, "Should have tools/list request");
     }
@@ -320,7 +329,10 @@ mod tests {
     fn test_mock_data_has_resources_list() {
         let data = MockData::generate();
 
-        let has_resources = data.logs.iter().any(|l| l.method == Some("resources/list".to_string()));
+        let has_resources = data
+            .logs
+            .iter()
+            .any(|l| l.method == Some("resources/list".to_string()));
 
         assert!(has_resources, "Should have resources/list request");
     }
@@ -329,11 +341,16 @@ mod tests {
     fn test_mock_data_has_tools_call() {
         let data = MockData::generate();
 
-        let tools_calls: Vec<_> = data.logs.iter()
+        let tools_calls: Vec<_> = data
+            .logs
+            .iter()
             .filter(|l| l.method == Some("tools/call".to_string()))
             .collect();
 
-        assert!(tools_calls.len() > 5, "Should have multiple tools/call requests");
+        assert!(
+            tools_calls.len() > 5,
+            "Should have multiple tools/call requests"
+        );
     }
 
     #[test]
@@ -350,7 +367,9 @@ mod tests {
     fn test_mock_data_has_sampling_requests() {
         let data = MockData::generate();
 
-        let has_sampling = data.logs.iter()
+        let has_sampling = data
+            .logs
+            .iter()
             .any(|l| l.method == Some("sampling/createMessage".to_string()));
 
         assert!(has_sampling, "Should have sampling/createMessage requests");
@@ -393,7 +412,10 @@ mod tests {
 
         // At least some messages should have non-zero token counts
         let has_tokens = data.logs.iter().any(|l| l.token_count > 0);
-        assert!(has_tokens, "Some messages should have non-zero token counts");
+        assert!(
+            has_tokens,
+            "Some messages should have non-zero token counts"
+        );
     }
 
     #[test]
@@ -403,8 +425,11 @@ mod tests {
         // Check that content is non-empty and has JSON-like structure
         for log in &data.logs {
             assert!(!log.content.is_empty(), "Log content should not be empty");
-            assert!(log.content.contains("jsonrpc") || log.content.contains("{"),
-                    "Log content should look like JSON-RPC: {}", log.id);
+            assert!(
+                log.content.contains("jsonrpc") || log.content.contains("{"),
+                "Log content should look like JSON-RPC: {}",
+                log.id
+            );
         }
     }
 
@@ -413,18 +438,25 @@ mod tests {
         let data = MockData::generate();
 
         // Outgoing messages (responses) should have durations
-        let responses_with_duration: Vec<_> = data.logs.iter()
+        let responses_with_duration: Vec<_> = data
+            .logs
+            .iter()
             .filter(|l| l.direction == "out" && l.duration_micros.is_some())
             .collect();
 
-        assert!(responses_with_duration.len() > 0, "Should have responses with durations");
+        assert!(
+            responses_with_duration.len() > 0,
+            "Should have responses with durations"
+        );
     }
 
     #[test]
     fn test_mock_data_prompts_list() {
         let data = MockData::generate();
 
-        let has_prompts = data.logs.iter()
+        let has_prompts = data
+            .logs
+            .iter()
             .any(|l| l.method == Some("prompts/list".to_string()));
 
         assert!(has_prompts, "Should have prompts/list request");

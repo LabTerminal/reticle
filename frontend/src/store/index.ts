@@ -168,6 +168,15 @@ export const useReticleStore = create<ReticleStore>((set, get) => ({
         }
       }
 
+      // Filter by minimum latency (for responses with duration)
+      if (filters.minLatencyMs !== undefined && filters.minLatencyMs > 0) {
+        const minLatencyMicros = filters.minLatencyMs * 1000
+        // Only include logs that have duration and meet the threshold
+        if (!log.duration_micros || log.duration_micros < minLatencyMicros) {
+          return false
+        }
+      }
+
       return true
     })
   },

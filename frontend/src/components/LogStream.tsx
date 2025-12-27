@@ -442,11 +442,21 @@ export function LogStream() {
                 </>
               ) : (
                 <>
-                  {/* No data yet */}
-                  <Zap className="w-10 h-10 mx-auto mb-3 text-muted-foreground/50" />
-                  <p className="text-sm text-muted-foreground font-medium">No messages yet</p>
-                  <p className="text-xs text-muted-foreground/70 mt-2">
-                    Messages will appear here in real-time when the proxy is active.
+                  {/* No data yet - helpful getting started message */}
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#00808F]/20 to-[#00808F]/5 dark:from-[#00F0FF]/20 dark:to-[#00F0FF]/5 flex items-center justify-center">
+                    <Zap className="w-8 h-8 text-[#00808F] dark:text-[#00F0FF]" />
+                  </div>
+                  <p className="text-base text-foreground font-semibold mb-2">Ready to inspect MCP traffic</p>
+                  <p className="text-sm text-muted-foreground mb-4 max-w-xs mx-auto">
+                    Start a proxy to capture messages between your client and MCP server.
+                  </p>
+                  <div className="text-xs text-muted-foreground/80 space-y-1.5">
+                    <p><span className="font-medium text-foreground">Demo</span> - Try with sample data</p>
+                    <p><span className="font-medium text-foreground">Stdio</span> - Local MCP servers</p>
+                    <p><span className="font-medium text-foreground">Remote</span> - HTTP/WebSocket servers</p>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground/60 mt-4">
+                    Press <kbd className="px-1.5 py-0.5 bg-muted border border-border rounded text-[10px] font-mono">?</kbd> for keyboard shortcuts
                   </p>
                 </>
               )}
