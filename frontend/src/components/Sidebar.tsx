@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
-import { Database, Trash2, Coins } from 'lucide-react'
+import { Database, Trash2, Coins, ChevronDown, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { useReticleStore } from '@/store'
 import { Button } from '@/components/ui/button'
@@ -21,6 +21,8 @@ export function Sidebar() {
     filters,
     setFilters,
   } = useReticleStore()
+
+  const [isTokenUsageExpanded, setIsTokenUsageExpanded] = useState(false)
 
   // Calculate metrics from logs
   const metrics = useMemo(() => {
@@ -158,55 +160,67 @@ export function Sidebar() {
             </div>
           </div>
 
-          {/* Token Profiling - Context Usage */}
+          {/* Token Profiling - Context Usage (Collapsible) */}
           {tokenStats.totalTokens > 0 && (
             <div>
-              <h3 className="text-[10px] font-semibold mb-2 text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                <Coins className="w-3 h-3" />
-                Token Usage
-              </h3>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-muted-foreground">Total Tokens</span>
-                  <span className="font-mono font-bold text-[#F59E0B] tabular-nums">
+              <button
+                onClick={() => setIsTokenUsageExpanded(!isTokenUsageExpanded)}
+                className="w-full flex items-center justify-between text-[10px] font-semibold mb-2 text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+              >
+                <span className="flex items-center gap-1.5">
+                  <Coins className="w-3 h-3" />
+                  Token Usage
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="font-mono font-bold text-[#F59E0B] normal-case">
                     {tokenStats.totalTokens.toLocaleString()}
                   </span>
-                </div>
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-muted-foreground">→ To Server</span>
-                  <span className="font-mono font-medium text-[#3B82F6] tabular-nums">
-                    {tokenStats.tokensToServer.toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-muted-foreground">← From Server</span>
-                  <span className="font-mono font-medium text-[#10B981] tabular-nums">
-                    {tokenStats.tokensFromServer.toLocaleString()}
-                  </span>
-                </div>
+                  {isTokenUsageExpanded ? (
+                    <ChevronDown className="w-3 h-3" />
+                  ) : (
+                    <ChevronRight className="w-3 h-3" />
+                  )}
+                </span>
+              </button>
 
-                {/* Top methods by tokens */}
-                {tokenStats.topMethods.length > 0 && (
-                  <div className="pt-2 border-t border-border/50">
-                    <p className="text-[10px] text-muted-foreground mb-1.5">Top by tokens</p>
-                    <div className="space-y-1">
-                      {tokenStats.topMethods.map(([method, tokens]) => (
-                        <div
-                          key={method}
-                          className="flex items-center justify-between text-[10px]"
-                        >
-                          <span className="font-mono text-muted-foreground truncate max-w-[120px]">
-                            {method}
-                          </span>
-                          <span className="font-mono text-[#F59E0B] tabular-nums">
-                            {tokens.toLocaleString()}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+              {isTokenUsageExpanded && (
+                <div className="space-y-2 pl-4 border-l-2 border-[#F59E0B]/30">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-muted-foreground">→ To Server</span>
+                    <span className="font-mono font-medium text-[#3B82F6] tabular-nums">
+                      {tokenStats.tokensToServer.toLocaleString()}
+                    </span>
                   </div>
-                )}
-              </div>
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-muted-foreground">← From Server</span>
+                    <span className="font-mono font-medium text-[#10B981] tabular-nums">
+                      {tokenStats.tokensFromServer.toLocaleString()}
+                    </span>
+                  </div>
+
+                  {/* Top methods by tokens */}
+                  {tokenStats.topMethods.length > 0 && (
+                    <div className="pt-2 border-t border-border/50">
+                      <p className="text-[10px] text-muted-foreground mb-1.5">Top by tokens</p>
+                      <div className="space-y-1">
+                        {tokenStats.topMethods.map(([method, tokens]) => (
+                          <div
+                            key={method}
+                            className="flex items-center justify-between text-[10px]"
+                          >
+                            <span className="font-mono text-muted-foreground truncate max-w-[120px]">
+                              {method}
+                            </span>
+                            <span className="font-mono text-[#F59E0B] tabular-nums">
+                              {tokens.toLocaleString()}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

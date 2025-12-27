@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
+import { invoke } from '@tauri-apps/api/core'
 import Editor from '@monaco-editor/react'
-import { Copy, Check, FileJson, Info, ArrowRight, AlertTriangle, Terminal } from 'lucide-react'
+import { Copy, Check, FileJson, Info, ArrowRight, AlertTriangle, Terminal, Play, Pencil, X, Send } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   useReticleStore,
@@ -17,6 +18,9 @@ export function Inspector() {
   const logs = useReticleStore((state) => state.logs)
   const { selectLog } = useReticleStore()
   const [copied, setCopied] = useState(false)
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [editedContent, setEditedContent] = useState('')
+  const [isSending, setIsSending] = useState(false)
   const { resolvedTheme } = useTheme()
 
   // Check message type
@@ -32,10 +36,79 @@ export function Inspector() {
   const latency =
     correlatedRequest && selectedLog ? calculateLatency(correlatedRequest, selectedLog) : null
 
-  // Reset copied state when selection changes
+  // Reset state when selection changes
   useEffect(() => {
     setCopied(false)
+    setIsEditMode(false)
+    setEditedContent('')
   }, [selectedLog?.id])
+
+  // Check if this is a replayable request (incoming JSON-RPC with method)
+  const isReplayable = selectedLog &&
+    !isNonJsonRpc &&
+    selectedLog.direction === 'in' &&
+    parsed?.method
+
+  // Replay the exact message
+  const handleReplay = async () => {
+    if (!selectedLog) return
+
+    setIsSending(true)
+    try {
+      await invoke('send_raw_message', { message: selectedLog.content })
+      toast.success('Request replayed', {
+        description: `Method: ${parsed?.method}`,
+      })
+    } catch (error) {
+      const errorMessage = typeof error === 'string' ? error : (error instanceof Error ? error.message : 'Unknown error')
+      toast.error('Failed to replay request', {
+        description: errorMessage,
+      })
+    } finally {
+      setIsSending(false)
+    }
+  }
+
+  // Enter edit mode
+  const handleEditMode = () => {
+    if (!selectedLog) return
+    setEditedContent(formatJSON(selectedLog.content))
+    setIsEditMode(true)
+  }
+
+  // Cancel edit mode
+  const handleCancelEdit = () => {
+    setIsEditMode(false)
+    setEditedContent('')
+  }
+
+  // Send edited message
+  const handleSendEdited = async () => {
+    if (!editedContent.trim()) return
+
+    // Validate JSON
+    try {
+      JSON.parse(editedContent)
+    } catch {
+      toast.error('Invalid JSON')
+      return
+    }
+
+    setIsSending(true)
+    try {
+      await invoke('send_raw_message', { message: editedContent })
+      toast.success('Modified request sent')
+      setIsEditMode(false)
+      setEditedContent('')
+    } catch (error) {
+      const errorMessage = typeof error === 'string' ? error : (error instanceof Error ? error.message : 'Unknown error')
+      toast.error('Failed to send request', {
+        description: errorMessage,
+      })
+    } finally {
+      setIsSending(false)
+    }
+  }
 
   const handleCopy = async () => {
     if (!selectedLog) return
@@ -77,24 +150,77 @@ export function Inspector() {
           </h2>
         </div>
         {selectedLog && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleCopy}
-            className="h-9 px-3 border border-border hover:bg-muted"
-          >
-            {copied ? (
+          <div className="flex items-center gap-2">
+            {/* Replay/Edit buttons for replayable requests */}
+            {isReplayable && !isEditMode && (
               <>
-                <Check className="w-3.5 h-3.5 mr-2 text-[#059669] dark:text-[#00FF9F]" />
-                <span className="text-xs text-[#059669] dark:text-[#00FF9F]">Copied</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
-                <span className="text-xs text-foreground">Copy</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleReplay}
+                  disabled={isSending}
+                  className="h-9 px-3 border border-[#059669]/50 dark:border-[#00FF9F]/50 hover:bg-[#059669]/10 dark:hover:bg-[#00FF9F]/10"
+                  title="Replay this request"
+                >
+                  <Play className="w-3.5 h-3.5 mr-2 text-[#059669] dark:text-[#00FF9F]" />
+                  <span className="text-xs text-[#059669] dark:text-[#00FF9F]">Replay</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleEditMode}
+                  className="h-9 px-3 border border-[#00808F]/50 dark:border-[#00F0FF]/50 hover:bg-[#00808F]/10 dark:hover:bg-[#00F0FF]/10"
+                  title="Edit and resend"
+                >
+                  <Pencil className="w-3.5 h-3.5 mr-2 text-[#00808F] dark:text-[#00F0FF]" />
+                  <span className="text-xs text-[#00808F] dark:text-[#00F0FF]">Edit</span>
+                </Button>
               </>
             )}
-          </Button>
+            {/* Edit mode actions */}
+            {isEditMode && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSendEdited}
+                  disabled={isSending}
+                  className="h-9 px-3 border border-[#059669]/50 dark:border-[#00FF9F]/50 hover:bg-[#059669]/10 dark:hover:bg-[#00FF9F]/10"
+                >
+                  <Send className="w-3.5 h-3.5 mr-2 text-[#059669] dark:text-[#00FF9F]" />
+                  <span className="text-xs text-[#059669] dark:text-[#00FF9F]">Send</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCancelEdit}
+                  className="h-9 px-3 border border-border hover:bg-muted"
+                >
+                  <X className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+                  <span className="text-xs text-foreground">Cancel</span>
+                </Button>
+              </>
+            )}
+            {/* Copy button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCopy}
+              className="h-9 px-3 border border-border hover:bg-muted"
+            >
+              {copied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 mr-2 text-[#059669] dark:text-[#00FF9F]" />
+                  <span className="text-xs text-[#059669] dark:text-[#00FF9F]">Copied</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+                  <span className="text-xs text-foreground">Copy</span>
+                </>
+              )}
+            </Button>
+          </div>
         )}
       </div>
 
@@ -211,13 +337,21 @@ export function Inspector() {
 
           {/* Monaco Editor - Premium Container */}
           <div className="flex-1 overflow-hidden">
+            {isEditMode && (
+              <div className="px-4 py-2 bg-[#00808F]/10 dark:bg-[#00F0FF]/10 border-b border-[#00808F]/30 dark:border-[#00F0FF]/30">
+                <span className="text-xs text-[#00808F] dark:text-[#00F0FF] font-medium">
+                  Edit Mode — Modify the JSON and click Send to replay with changes
+                </span>
+              </div>
+            )}
             <Editor
               height="100%"
               defaultLanguage={isNonJsonRpc ? 'plaintext' : 'json'}
-              value={isNonJsonRpc ? selectedLog.content : formattedJSON}
+              value={isEditMode ? editedContent : (isNonJsonRpc ? selectedLog.content : formattedJSON)}
+              onChange={(value) => isEditMode && setEditedContent(value || '')}
               theme={resolvedTheme === 'dark' ? 'vs-dark' : 'light'}
               options={{
-                readOnly: true,
+                readOnly: !isEditMode,
                 minimap: { enabled: false },
                 fontSize: 12,
                 fontFamily: 'JetBrains Mono, Geist Mono, monospace',
