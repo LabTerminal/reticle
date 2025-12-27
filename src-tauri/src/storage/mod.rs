@@ -55,6 +55,8 @@ impl SessionStorage {
             message_count: session.metadata.message_count,
             duration_ms: session.metadata.duration_ms,
             transport: session.metadata.transport.clone(),
+            server_name: session.metadata.server_id.as_ref().map(|s| s.name.clone()),
+            tags: session.metadata.tags.clone(),
         };
 
         let info_bytes = bincode::serialize(&info)
@@ -191,6 +193,103 @@ impl SessionStorage {
             size_bytes: db_size,
         })
     }
+
+    /// List sessions with filtering
+    pub async fn list_sessions_filtered(&self, filter: &SessionFilter) -> Result<Vec<SessionInfo>> {
+        let all_sessions = self.list_sessions().await?;
+
+        let filtered: Vec<SessionInfo> = all_sessions
+            .into_iter()
+            .filter(|session| {
+                // Filter by server name
+                if let Some(ref name) = filter.server_name {
+                    if session.server_name.as_ref() != Some(name) {
+                        return false;
+                    }
+                }
+
+                // Filter by transport
+                if let Some(ref transport) = filter.transport {
+                    if &session.transport != transport {
+                        return false;
+                    }
+                }
+
+                // Filter by tags (session must have ALL specified tags)
+                for tag in &filter.tags {
+                    if !session.tags.contains(tag) {
+                        return false;
+                    }
+                }
+
+                true
+            })
+            .collect();
+
+        Ok(filtered)
+    }
+
+    /// Add tags to a session
+    pub async fn add_session_tags(&self, session_id: &str, tags: Vec<String>) -> Result<()> {
+        // Load the session
+        let mut session = self.load_session(session_id).await?;
+
+        // Add new tags (deduplicating)
+        for tag in tags {
+            if !session.metadata.tags.contains(&tag) {
+                session.metadata.tags.push(tag);
+            }
+        }
+
+        // Re-save the session
+        self.save_session(&session).await?;
+
+        tracing::info!("Added tags to session {}", session_id);
+        Ok(())
+    }
+
+    /// Remove tags from a session
+    pub async fn remove_session_tags(&self, session_id: &str, tags: Vec<String>) -> Result<()> {
+        // Load the session
+        let mut session = self.load_session(session_id).await?;
+
+        // Remove specified tags
+        session.metadata.tags.retain(|t| !tags.contains(t));
+
+        // Re-save the session
+        self.save_session(&session).await?;
+
+        tracing::info!("Removed tags from session {}", session_id);
+        Ok(())
+    }
+
+    /// Get all unique tags across all sessions
+    pub async fn get_all_tags(&self) -> Result<Vec<String>> {
+        let sessions = self.list_sessions().await?;
+        let mut all_tags: Vec<String> = sessions
+            .into_iter()
+            .flat_map(|s| s.tags)
+            .collect();
+
+        all_tags.sort();
+        all_tags.dedup();
+
+        Ok(all_tags)
+    }
+
+    /// Get all unique server names across all sessions
+    pub async fn get_all_server_names(&self) -> Result<Vec<String>> {
+        let sessions = self.list_sessions().await?;
+        let mut server_names: Vec<String> = sessions
+            .into_iter()
+            .filter_map(|s| s.server_name)
+            .collect();
+
+        server_names.sort();
+        server_names.dedup();
+
+        Ok(server_names)
+    }
 }
 
 /// Session information for listing
@@ -203,6 +302,12 @@ pub struct SessionInfo {
     pub message_count: usize,
     pub duration_ms: Option<u64>,
     pub transport: String,
+    /// Server name for multi-server filtering
+    #[serde(default)]
+    pub server_name: Option<String>,
+    /// Custom tags for filtering
+    #[serde(default)]
+    pub tags: Vec<String>,
 }
 
 /// Storage statistics
@@ -210,6 +315,20 @@ pub struct SessionInfo {
 pub struct StorageStats {
     pub session_count: usize,
     pub size_bytes: u64,
+}
+
+/// Filter for querying sessions
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SessionFilter {
+    /// Filter by server name
+    #[serde(default)]
+    pub server_name: Option<String>,
+    /// Filter by tags (sessions must have ALL specified tags)
+    #[serde(default)]
+    pub tags: Vec<String>,
+    /// Filter by transport type
+    #[serde(default)]
+    pub transport: Option<String>,
 }
 
 // bincode support - add to dependencies

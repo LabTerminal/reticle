@@ -16,6 +16,9 @@ pub struct LogEvent {
     /// Estimated token count for this message
     #[serde(default)]
     pub token_count: u64,
+    /// Server name for multi-server filtering
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub server_name: Option<String>,
 }
 
 /// Emit a log event to the frontend

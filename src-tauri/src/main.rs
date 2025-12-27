@@ -23,11 +23,12 @@ mod state;
 mod storage;
 
 use commands::{
-    analyze_mcp_server, can_interact, clear_all_token_stats, clear_session_token_stats,
-    delete_recorded_session, estimate_tokens, export_session, get_global_token_stats,
-    get_mcp_methods, get_recording_status, get_session_token_stats, list_recorded_sessions,
-    load_recorded_session, send_raw_message, send_request, start_proxy, start_proxy_v2,
-    start_recording, stop_proxy, stop_recording,
+    add_session_tags, analyze_mcp_server, can_interact, clear_all_token_stats,
+    clear_session_token_stats, delete_recorded_session, estimate_tokens, export_session,
+    get_all_server_names, get_all_tags, get_global_token_stats, get_mcp_methods,
+    get_recording_status, get_session_metadata, get_session_token_stats, list_recorded_sessions,
+    list_sessions_filtered, load_recorded_session, remove_session_tags, send_raw_message,
+    send_request, start_proxy, start_proxy_v2, start_recording, stop_proxy, stop_recording,
 };
 use state::AppState;
 
@@ -69,7 +70,14 @@ fn main() {
             clear_session_token_stats,
             clear_all_token_stats,
             estimate_tokens,
-            analyze_mcp_server
+            analyze_mcp_server,
+            // Session management commands
+            add_session_tags,
+            remove_session_tags,
+            get_all_tags,
+            get_all_server_names,
+            list_sessions_filtered,
+            get_session_metadata
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -22,6 +22,13 @@ interface ReticleStore {
   currentSession: Session | null
   addSession: (session: Session) => void
   setCurrentSession: (sessionId: string) => void
+  updateSessionTags: (sessionId: string, tags: string[]) => void
+
+  // Multi-server support
+  availableServers: string[]
+  availableTags: string[]
+  setAvailableServers: (servers: string[]) => void
+  setAvailableTags: (tags: string[]) => void
 
   // Filters
   filters: FilterOptions
@@ -97,6 +104,22 @@ export const useReticleStore = create<ReticleStore>((set, get) => ({
     set((state) => ({
       currentSession: state.sessions.find((s) => s.id === sessionId) || null,
     })),
+  updateSessionTags: (sessionId, tags) =>
+    set((state) => ({
+      sessions: state.sessions.map((s) =>
+        s.id === sessionId ? { ...s, tags } : s
+      ),
+      currentSession:
+        state.currentSession?.id === sessionId
+          ? { ...state.currentSession, tags }
+          : state.currentSession,
+    })),
+
+  // Multi-server support
+  availableServers: [],
+  availableTags: [],
+  setAvailableServers: (servers) => set({ availableServers: servers }),
+  setAvailableTags: (tags) => set({ availableTags: tags }),
 
   // Filters
   filters: {},
@@ -127,6 +150,11 @@ export const useReticleStore = create<ReticleStore>((set, get) => ({
 
       // Filter by method
       if (filters.method && log.method !== filters.method) {
+        return false
+      }
+
+      // Filter by server name
+      if (filters.serverName && log.server_name !== filters.serverName) {
         return false
       }
 

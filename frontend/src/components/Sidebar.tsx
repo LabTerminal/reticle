@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Logo } from '@/components/Logo'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
+import { ServerFilter, TagFilter, QuickTagInput } from '@/components/SessionTags'
 
 export function Sidebar() {
   const {
@@ -262,7 +263,7 @@ export function Sidebar() {
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Filters
               </h3>
-              {(filters.method || filters.direction) && (
+              {(filters.method || filters.direction || filters.serverName || (filters.tags && filters.tags.length > 0)) && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -272,6 +273,22 @@ export function Sidebar() {
                   Clear
                 </Button>
               )}
+            </div>
+
+            {/* Server Filter */}
+            <div className="mb-3">
+              <ServerFilter
+                selectedServer={filters.serverName}
+                onSelectServer={(server) => setFilters({ serverName: server })}
+              />
+            </div>
+
+            {/* Tag Filter */}
+            <div className="mb-3">
+              <TagFilter
+                selectedTags={filters.tags || []}
+                onSelectTags={(tags) => setFilters({ tags })}
+              />
             </div>
 
             {/* Direction Filter */}
@@ -355,7 +372,7 @@ export function Sidebar() {
               <h3 className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wider">
                 Sessions
               </h3>
-              <ScrollArea className="h-32">
+              <ScrollArea className="h-40">
                 <div className="space-y-1">
                   {sessions.map((session) => (
                     <button
@@ -377,11 +394,37 @@ export function Sidebar() {
                       <div className="text-[10px] font-mono mt-1 truncate">
                         {session.id}
                       </div>
+                      {/* Server name badge */}
+                      {session.server_name && (
+                        <div className="mt-1">
+                          <span className="text-[9px] font-mono px-1 py-0.5 rounded bg-blue-500/20 text-blue-400">
+                            {session.server_name}
+                          </span>
+                        </div>
+                      )}
+                      {/* Tags */}
+                      {session.tags && session.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {session.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="text-[9px] font-mono px-1 py-0.5 rounded bg-secondary text-secondary-foreground"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </button>
                   ))}
                 </div>
               </ScrollArea>
             </div>
+          )}
+
+          {/* Quick Tag Input for Current Session */}
+          {currentSession && (
+            <QuickTagInput sessionId={currentSession.id} localOnly />
           )}
 
           {/* Actions */}

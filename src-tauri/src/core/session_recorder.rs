@@ -97,6 +97,35 @@ pub struct SessionMetadata {
 
     /// Server information (if available)
     pub server_info: Option<ServerInfo>,
+
+    /// Server identifier for multi-server support
+    #[serde(default)]
+    pub server_id: Option<ServerIdentifier>,
+
+    /// Custom tags for filtering and organization
+    #[serde(default)]
+    pub tags: Vec<String>,
+}
+
+/// Server identifier for multi-server tracking
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServerIdentifier {
+    /// Human-readable server name (e.g., "claude-dev", "filesystem")
+    pub name: String,
+
+    /// Server version from MCP initialize response
+    #[serde(default)]
+    pub version: Option<String>,
+
+    /// Command used to start the server
+    pub command: String,
+
+    /// Command arguments
+    #[serde(default)]
+    pub args: Vec<String>,
+
+    /// Connection type: "stdio", "sse", "websocket"
+    pub connection_type: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -118,6 +147,8 @@ pub struct SessionRecorder {
     started_at: SystemTime,
     messages: Arc<Mutex<Vec<RecordedMessage>>>,
     transport_type: String,
+    server_id: Option<ServerIdentifier>,
+    tags: Arc<Mutex<Vec<String>>>,
 }
 
 impl SessionRecorder {
@@ -129,7 +160,51 @@ impl SessionRecorder {
             started_at: SystemTime::now(),
             messages: Arc::new(Mutex::new(Vec::new())),
             transport_type,
+            server_id: None,
+            tags: Arc::new(Mutex::new(Vec::new())),
         }
+    }
+
+    /// Create a new session recorder with server identifier
+    pub fn with_server(
+        session_id: String,
+        session_name: String,
+        transport_type: String,
+        server_id: ServerIdentifier,
+    ) -> Self {
+        Self {
+            session_id,
+            session_name,
+            started_at: SystemTime::now(),
+            messages: Arc::new(Mutex::new(Vec::new())),
+            transport_type,
+            server_id: Some(server_id),
+            tags: Arc::new(Mutex::new(Vec::new())),
+        }
+    }
+
+    /// Add a tag to the session
+    pub async fn add_tag(&self, tag: String) {
+        let mut tags = self.tags.lock().await;
+        if !tags.contains(&tag) {
+            tags.push(tag);
+        }
+    }
+
+    /// Remove a tag from the session
+    pub async fn remove_tag(&self, tag: &str) {
+        let mut tags = self.tags.lock().await;
+        tags.retain(|t| t != tag);
+    }
+
+    /// Get all tags
+    pub async fn get_tags(&self) -> Vec<String> {
+        self.tags.lock().await.clone()
+    }
+
+    /// Get server identifier
+    pub fn get_server_id(&self) -> Option<&ServerIdentifier> {
+        self.server_id.as_ref()
     }
 
     /// Record a message
@@ -197,6 +272,7 @@ impl SessionRecorder {
 
         let messages = self.messages.lock().await.clone();
         let message_count = messages.len();
+        let tags = self.tags.lock().await.clone();
 
         let duration_ms = (ended_at - started_at) / 1000;
 
@@ -212,6 +288,8 @@ impl SessionRecorder {
                 duration_ms: Some(duration_ms),
                 client_info: None, // Will be populated from initialize message
                 server_info: None, // Will be populated from initialize response
+                server_id: self.server_id,
+                tags,
             },
         })
     }

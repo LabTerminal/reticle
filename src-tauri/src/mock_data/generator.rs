@@ -9,8 +9,13 @@ pub struct MockData {
 
 impl MockData {
     pub fn generate() -> Self {
+        Self::generate_for_server("filesystem-server")
+    }
+
+    pub fn generate_for_server(server_name: &str) -> Self {
         let session_id = "demo-session-12345".to_string();
         let base_timestamp = 1734720000000000u64; // Fixed timestamp for consistency
+        let server_name_owned = server_name.to_string();
 
         let session = SessionStartEvent {
             id: session_id.clone(),
@@ -42,6 +47,7 @@ impl MockData {
                 method: method.map(|s| s.to_string()),
                 duration_micros: duration,
                 token_count,
+                server_name: Some(server_name_owned.clone()),
             });
             log_id_counter += 1;
         };

@@ -17,6 +17,7 @@ export interface LogEntry {
   duration_micros?: number // For responses, time since request
   message_type?: MessageType // Type of content (jsonrpc, raw, stderr)
   token_count?: number // Estimated token count for this message
+  server_name?: string // Server name for multi-server filtering
 }
 
 export interface ParsedMessage {
@@ -37,6 +38,8 @@ export interface Session {
   started_at: number
   message_count: number
   last_activity: number
+  server_name?: string // Server name for multi-server support
+  tags?: string[] // Custom tags for filtering
 }
 
 export interface MetricsData {
@@ -50,6 +53,8 @@ export interface FilterOptions {
   direction?: Direction
   searchText?: string
   sessionId?: string
+  serverName?: string // Filter by server name
+  tags?: string[] // Filter by tags
 }
 
 /** Token statistics per method */
@@ -138,4 +143,40 @@ export interface ServerAnalysis {
   resources: ResourcesAnalysis
   token_breakdown: Record<string, number>
   analyzed_at: number
+}
+
+/** Session info from storage (for listing) */
+export interface SessionInfo {
+  id: string
+  name: string
+  started_at: number
+  ended_at?: number
+  message_count: number
+  duration_ms?: number
+  transport: string
+  server_name?: string
+  tags: string[]
+}
+
+/** Filter for querying sessions */
+export interface SessionFilter {
+  server_name?: string
+  tags?: string[]
+  transport?: string
+}
+
+/** Session metadata response from backend */
+export interface SessionMetadata {
+  id: string
+  name: string
+  started_at: number
+  ended_at?: number
+  transport: string
+  server_name?: string
+  server_version?: string
+  server_command?: string
+  connection_type?: string
+  tags: string[]
+  message_count: number
+  duration_ms?: number
 }

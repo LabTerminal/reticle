@@ -62,6 +62,9 @@ pub struct LogEntry {
     /// Estimated token count for this message
     #[serde(default)]
     pub token_count: u64,
+    /// Server name for multi-server filtering
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub server_name: Option<String>,
 }
 
 impl LogEntry {
@@ -93,7 +96,21 @@ impl LogEntry {
             duration_micros: None,
             message_type: MessageType::JsonRpc,
             token_count,
+            server_name: None,
         }
+    }
+
+    /// Create a new log entry from a JSON-RPC message with server name
+    pub fn with_server(
+        id: String,
+        session_id: String,
+        direction: Direction,
+        content: serde_json::Value,
+        server_name: String,
+    ) -> Self {
+        let mut entry = Self::new(id, session_id, direction, content);
+        entry.server_name = Some(server_name);
+        entry
     }
 
     /// Create a new log entry from raw text (non-JSON output)
@@ -122,7 +139,22 @@ impl LogEntry {
             duration_micros: None,
             message_type,
             token_count,
+            server_name: None,
         }
+    }
+
+    /// Create a new log entry from raw text with server name
+    pub fn new_raw_with_server(
+        id: String,
+        session_id: String,
+        direction: Direction,
+        content: String,
+        message_type: MessageType,
+        server_name: String,
+    ) -> Self {
+        let mut entry = Self::new_raw(id, session_id, direction, content, message_type);
+        entry.server_name = Some(server_name);
+        entry
     }
 }
 

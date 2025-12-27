@@ -51,6 +51,8 @@ Building with MCP today feels like 1990s web development without a browser conso
 | **Token Profiling** | Real-time token estimation for every message. See context consumption per method, identify token-heavy tools. |
 | **Stderr Capture** | Server crashes, Python tracebacks, debug prints — all captured and displayed separately from JSON-RPC traffic. |
 | **Multi-Session Support** | Debug 10 MCP servers simultaneously. Filter by session, method, or direction. |
+| **Session Tagging** | Add custom tags to sessions for organization. Filter sessions by server name or tags. |
+| **Multi-Server Identification** | Each server is identified by name. Filter logs by specific server. |
 | **Session Recording** | Capture complete sessions with timing data. Export to JSON for analysis or replay. |
 | **Zero-Latency Proxy** | Microsecond overhead. Your agent won't even notice Reticle is there. |
 
@@ -320,9 +322,10 @@ just build    # Desktop app (macOS/Linux/Windows)
 - [x] Session recording (capture messages with timing)
 - [x] Log export (JSON format)
 - [x] Context token profiling per message and method
+- [x] Session tagging for organization and filtering
+- [x] Multi-server identification and filtering
 
 ### In Progress
-- [ ] Session tagging for multi-server debugging
 - [ ] Log export (CSV/HAR formats)
 
 ### Planned
