@@ -19,11 +19,11 @@ use axum::{
 };
 use bytes::Bytes;
 use futures::{SinkExt, StreamExt};
+use reqwest::Client;
 use reticle_core::events::{NoOpEventSink, UnixSocketEventSink};
 use reticle_core::protocol::{Direction, LogEntry, MessageType};
 use reticle_core::session_names::{create_session_id, SessionId};
 use reticle_core::token_counter::TokenCounter as TC;
-use reqwest::Client;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -37,7 +37,7 @@ static HTTP_MESSAGE_COUNTER: AtomicU64 = AtomicU64::new(0);
 /// Generate a unique message ID
 fn generate_message_id() -> String {
     let count = HTTP_MESSAGE_COUNTER.fetch_add(1, Ordering::SeqCst);
-    format!("http-{}", count)
+    format!("http-{count}")
 }
 
 /// Event sink enum for HTTP proxy - allows Clone without dyn trait
@@ -159,14 +159,14 @@ pub async fn run_http_proxy(
         .layer(cors);
 
     // Bind to localhost
-    let addr = format!("127.0.0.1:{}", listen_port);
+    let addr = format!("127.0.0.1:{listen_port}");
     let listener = tokio::net::TcpListener::bind(&addr)
         .await
-        .map_err(|e| format!("Failed to bind to {}: {e}", addr))?;
+        .map_err(|e| format!("Failed to bind to {addr}: {e}"))?;
 
     eprintln!("[HTTP PROXY] Session: {}", session.name);
-    eprintln!("[HTTP PROXY] Listening on http://{}", addr);
-    eprintln!("[HTTP PROXY] Proxying to {}", upstream_url);
+    eprintln!("[HTTP PROXY] Listening on http://{addr}");
+    eprintln!("[HTTP PROXY] Proxying to {upstream_url}");
     info!("HTTP proxy '{}' listening on {}", session.name, addr);
 
     // Forward inject commands from socket to the proxy state
@@ -214,7 +214,7 @@ async fn proxy_handler(
     let uri = req.uri().clone();
     let headers = req.headers().clone();
     let path = uri.path();
-    let query = uri.query().map(|q| format!("?{}", q)).unwrap_or_default();
+    let query = uri.query().map(|q| format!("?{q}")).unwrap_or_default();
 
     debug!("Proxying {} {}{}", method, path, query);
 
@@ -235,9 +235,7 @@ async fn proxy_handler(
 
         info!("WebSocket upgrade request -> {}", ws_url);
 
-        return ws_upgrade.on_upgrade(move |socket| {
-            handle_websocket(socket, ws_url, state)
-        });
+        return ws_upgrade.on_upgrade(move |socket| handle_websocket(socket, ws_url, state));
     }
 
     // Build upstream URL
@@ -293,7 +291,7 @@ async fn proxy_handler(
             error!("Upstream request failed: {}", e);
             return (
                 StatusCode::BAD_GATEWAY,
-                format!("Upstream request failed: {}", e),
+                format!("Upstream request failed: {e}"),
             )
                 .into_response();
         }
@@ -345,10 +343,7 @@ async fn proxy_handler(
 }
 
 /// Stream SSE response while logging events
-async fn stream_sse_response(
-    state: HttpProxyState,
-    response: reqwest::Response,
-) -> Response {
+async fn stream_sse_response(state: HttpProxyState, response: reqwest::Response) -> Response {
     let status = response.status();
     let headers = response.headers().clone();
 
@@ -388,7 +383,10 @@ async fn stream_sse_response(
 
 /// Handle WebSocket proxy - bidirectional forwarding with logging
 async fn handle_websocket(client_socket: WebSocket, upstream_url: String, state: HttpProxyState) {
-    info!("Establishing WebSocket connection to upstream: {}", upstream_url);
+    info!(
+        "Establishing WebSocket connection to upstream: {}",
+        upstream_url
+    );
 
     // Connect to upstream WebSocket server
     let upstream_ws = match connect_async(&upstream_url).await {
@@ -491,10 +489,10 @@ fn axum_to_tungstenite(msg: AxumWsMessage) -> Option<TungsteniteMessage> {
 /// Convert tungstenite message to axum WebSocket message
 fn tungstenite_to_axum(msg: TungsteniteMessage) -> Option<AxumWsMessage> {
     match msg {
-        TungsteniteMessage::Text(text) => Some(AxumWsMessage::Text(text.into())),
-        TungsteniteMessage::Binary(data) => Some(AxumWsMessage::Binary(data.into())),
-        TungsteniteMessage::Ping(data) => Some(AxumWsMessage::Ping(data.into())),
-        TungsteniteMessage::Pong(data) => Some(AxumWsMessage::Pong(data.into())),
+        TungsteniteMessage::Text(text) => Some(AxumWsMessage::Text(text)),
+        TungsteniteMessage::Binary(data) => Some(AxumWsMessage::Binary(data)),
+        TungsteniteMessage::Ping(data) => Some(AxumWsMessage::Ping(data)),
+        TungsteniteMessage::Pong(data) => Some(AxumWsMessage::Pong(data)),
         TungsteniteMessage::Close(_) => Some(AxumWsMessage::Close(None)),
         TungsteniteMessage::Frame(_) => None, // Raw frames not supported
     }
@@ -528,7 +526,10 @@ async fn log_ws_message(state: &HttpProxyState, direction: Direction, body: &Byt
     // Try to extract method from JSON-RPC
     let (method, message_type) =
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-            let method = json.get("method").and_then(|m| m.as_str()).map(String::from);
+            let method = json
+                .get("method")
+                .and_then(|m| m.as_str())
+                .map(String::from);
             (method, MessageType::JsonRpc)
         } else {
             (None, MessageType::Raw)
@@ -565,7 +566,10 @@ async fn log_message(state: &HttpProxyState, direction: Direction, body: &Bytes)
     // Try to extract method from JSON-RPC
     let (method, message_type) =
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-            let method = json.get("method").and_then(|m| m.as_str()).map(String::from);
+            let method = json
+                .get("method")
+                .and_then(|m| m.as_str())
+                .map(String::from);
             (method, MessageType::JsonRpc)
         } else {
             (None, MessageType::Raw)
@@ -589,5 +593,145 @@ async fn log_message(state: &HttpProxyState, direction: Direction, body: &Bytes)
 
     if let Err(e) = state.event_sink.emit_log(&entry).await {
         warn!("Failed to emit log: {}", e);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_generate_message_id_unique() {
+        let id1 = generate_message_id();
+        let id2 = generate_message_id();
+        let id3 = generate_message_id();
+
+        assert_ne!(id1, id2);
+        assert_ne!(id2, id3);
+        assert_ne!(id1, id3);
+    }
+
+    #[test]
+    fn test_generate_message_id_format() {
+        let id = generate_message_id();
+        assert!(id.starts_with("http-"));
+    }
+
+    #[test]
+    fn test_tungstenite_message_to_bytes_text() {
+        let msg = TungsteniteMessage::Text("hello".to_string());
+        let bytes = tungstenite_message_to_bytes(&msg);
+        assert!(bytes.is_some());
+        assert_eq!(bytes.unwrap().as_ref(), b"hello");
+    }
+
+    #[test]
+    fn test_tungstenite_message_to_bytes_binary() {
+        let msg = TungsteniteMessage::Binary(vec![1, 2, 3, 4]);
+        let bytes = tungstenite_message_to_bytes(&msg);
+        assert!(bytes.is_some());
+        assert_eq!(bytes.unwrap().as_ref(), &[1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn test_tungstenite_message_to_bytes_ping() {
+        let msg = TungsteniteMessage::Ping(vec![]);
+        let bytes = tungstenite_message_to_bytes(&msg);
+        assert!(bytes.is_none());
+    }
+
+    #[test]
+    fn test_tungstenite_message_to_bytes_pong() {
+        let msg = TungsteniteMessage::Pong(vec![]);
+        let bytes = tungstenite_message_to_bytes(&msg);
+        assert!(bytes.is_none());
+    }
+
+    #[test]
+    fn test_tungstenite_message_to_bytes_close() {
+        let msg = TungsteniteMessage::Close(None);
+        let bytes = tungstenite_message_to_bytes(&msg);
+        assert!(bytes.is_none());
+    }
+
+    #[test]
+    fn test_tungstenite_to_axum_text() {
+        let msg = TungsteniteMessage::Text("test".to_string());
+        let axum_msg = tungstenite_to_axum(msg);
+        assert!(axum_msg.is_some());
+        match axum_msg.unwrap() {
+            AxumWsMessage::Text(t) => assert_eq!(t.to_string(), "test"),
+            _ => panic!("Expected Text message"),
+        }
+    }
+
+    #[test]
+    fn test_tungstenite_to_axum_binary() {
+        let msg = TungsteniteMessage::Binary(vec![1, 2, 3]);
+        let axum_msg = tungstenite_to_axum(msg);
+        assert!(axum_msg.is_some());
+        match axum_msg.unwrap() {
+            AxumWsMessage::Binary(b) => assert_eq!(&b[..], &[1, 2, 3]),
+            _ => panic!("Expected Binary message"),
+        }
+    }
+
+    #[test]
+    fn test_tungstenite_to_axum_ping() {
+        let msg = TungsteniteMessage::Ping(vec![1, 2]);
+        let axum_msg = tungstenite_to_axum(msg);
+        assert!(axum_msg.is_some());
+        match axum_msg.unwrap() {
+            AxumWsMessage::Ping(p) => assert_eq!(&p[..], &[1, 2]),
+            _ => panic!("Expected Ping message"),
+        }
+    }
+
+    #[test]
+    fn test_tungstenite_to_axum_pong() {
+        let msg = TungsteniteMessage::Pong(vec![3, 4]);
+        let axum_msg = tungstenite_to_axum(msg);
+        assert!(axum_msg.is_some());
+        match axum_msg.unwrap() {
+            AxumWsMessage::Pong(p) => assert_eq!(&p[..], &[3, 4]),
+            _ => panic!("Expected Pong message"),
+        }
+    }
+
+    #[test]
+    fn test_tungstenite_to_axum_close() {
+        let msg = TungsteniteMessage::Close(None);
+        let axum_msg = tungstenite_to_axum(msg);
+        assert!(axum_msg.is_some());
+        assert!(matches!(axum_msg.unwrap(), AxumWsMessage::Close(_)));
+    }
+
+    #[test]
+    fn test_tungstenite_to_axum_frame() {
+        // Frame messages are not supported
+        let msg = TungsteniteMessage::Frame(
+            tokio_tungstenite::tungstenite::protocol::frame::Frame::ping(vec![]),
+        );
+        let axum_msg = tungstenite_to_axum(msg);
+        assert!(axum_msg.is_none());
+    }
+
+    #[test]
+    fn test_http_event_sink_clone() {
+        let sink = HttpEventSink::NoOp(NoOpEventSink);
+        let _cloned = sink.clone();
+    }
+
+    #[test]
+    fn test_http_proxy_state_clone() {
+        let state = HttpProxyState {
+            upstream_url: "http://localhost:8080".to_string(),
+            session: create_session_id(Some("test")),
+            server_name: "test-server".to_string(),
+            client: Client::new(),
+            event_sink: HttpEventSink::NoOp(NoOpEventSink),
+            inject_tx: Arc::new(Mutex::new(None)),
+        };
+        let _cloned = state.clone();
     }
 }

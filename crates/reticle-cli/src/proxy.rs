@@ -7,6 +7,7 @@
 //! - Forwarding stdin/stdout/stderr between parent and child
 //! - Emitting telemetry events to the Reticle Hub
 //! - Receiving inject commands from the Hub to send messages to the MCP server
+//! - Proper signal handling for clean shutdown
 
 use reticle_core::events::{EventSink, InjectReceiver};
 use reticle_core::protocol::{Direction, LogEntry, MessageType};
@@ -58,9 +59,44 @@ pub async fn run_stdio_proxy<E: EventSink>(
 
     let mut log_counter = 0u64;
 
+    // Set up unified signal handler for clean shutdown
+    // On Unix, we handle SIGTERM, SIGHUP, and SIGINT
+    // On Windows, we only handle Ctrl+C
+    #[cfg(unix)]
+    let shutdown_signal = async {
+        use tokio::signal::unix::{signal, SignalKind};
+        let mut sigterm = signal(SignalKind::terminate()).expect("SIGTERM handler");
+        let mut sighup = signal(SignalKind::hangup()).expect("SIGHUP handler");
+        let mut sigint = signal(SignalKind::interrupt()).expect("SIGINT handler");
+        tokio::select! {
+            _ = sigterm.recv() => "SIGTERM",
+            _ = sighup.recv() => "SIGHUP",
+            _ = sigint.recv() => "SIGINT",
+        }
+    };
+    #[cfg(not(unix))]
+    let shutdown_signal = async {
+        tokio::signal::ctrl_c().await.ok();
+        "SIGINT"
+    };
+    tokio::pin!(shutdown_signal);
+
     // Main proxy loop
     loop {
         tokio::select! {
+            // Handle shutdown signals
+            signal_name = &mut shutdown_signal => {
+                tracing::info!("Received {}, shutting down...", signal_name);
+                let _ = child.kill().await;
+                let _ = event_sink.emit_session_ended(&session_id).await;
+                let _ = child.wait().await;
+                return Ok(match signal_name {
+                    "SIGTERM" => 143,
+                    "SIGHUP" => 129,
+                    _ => 130, // SIGINT
+                });
+            }
+
             // Read from parent's stdin, write to child's stdin
             line = stdin_reader.next_line() => {
                 match line {
@@ -107,9 +143,14 @@ pub async fn run_stdio_proxy<E: EventSink>(
                         let _ = child_stdin.flush().await;
                     }
                     Ok(None) => {
-                        // Parent stdin closed
-                        tracing::info!("Parent stdin closed");
-                        break;
+                        // Parent stdin closed - this means the parent process exited
+                        tracing::info!("Parent stdin closed, terminating child process...");
+                        let _ = child.kill().await;
+                        let _ = event_sink.emit_session_ended(&session_id).await;
+                        // Give child a moment to clean up
+                        let status = child.wait().await;
+                        tracing::info!("Child process terminated: {:?}", status);
+                        return Ok(0);
                     }
                     Err(e) => {
                         tracing::error!("Error reading stdin: {}", e);
@@ -254,7 +295,9 @@ pub async fn run_stdio_proxy<E: EventSink>(
         }
     }
 
-    // Wait for child to exit
+    // If we broke out of the loop (stdin/stdout error), kill the child and wait
+    tracing::info!("Proxy loop ended, terminating child process...");
+    let _ = child.kill().await;
     let status = child
         .wait()
         .await

@@ -433,10 +433,7 @@ fn timestamp_to_iso8601(micros: u64) -> String {
     }
     let day = remaining_days + 1;
 
-    format!(
-        "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.{:03}Z",
-        year, month, day, hours, minutes, seconds, millis
-    )
+    format!("{year:04}-{month:02}-{day:02}T{hours:02}:{minutes:02}:{seconds:02}.{millis:03}Z")
 }
 
 fn is_leap_year(year: i64) -> bool {
@@ -454,10 +451,7 @@ pub struct RecordingStatus {
 
 /// Add a tag to the current recording session
 #[tauri::command]
-pub async fn add_recording_tag(
-    state: State<'_, AppState>,
-    tag: String,
-) -> Result<(), String> {
+pub async fn add_recording_tag(state: State<'_, AppState>, tag: String) -> Result<(), String> {
     let recorder_state = state.recorder.lock().await;
 
     if let Some(recorder) = recorder_state.as_ref() {
@@ -470,10 +464,7 @@ pub async fn add_recording_tag(
 
 /// Remove a tag from the current recording session
 #[tauri::command]
-pub async fn remove_recording_tag(
-    state: State<'_, AppState>,
-    tag: String,
-) -> Result<(), String> {
+pub async fn remove_recording_tag(state: State<'_, AppState>, tag: String) -> Result<(), String> {
     let recorder_state = state.recorder.lock().await;
 
     if let Some(recorder) = recorder_state.as_ref() {
@@ -486,9 +477,7 @@ pub async fn remove_recording_tag(
 
 /// Get tags from the current recording session
 #[tauri::command]
-pub async fn get_recording_tags(
-    state: State<'_, AppState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_recording_tags(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     let recorder_state = state.recorder.lock().await;
 
     if let Some(recorder) = recorder_state.as_ref() {
@@ -616,7 +605,7 @@ mod tests {
         };
 
         // Debug trait should work
-        let debug_str = format!("{:?}", status);
+        let debug_str = format!("{status:?}");
         assert!(debug_str.contains("RecordingStatus"));
     }
 }

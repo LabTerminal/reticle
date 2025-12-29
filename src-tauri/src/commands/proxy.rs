@@ -40,8 +40,7 @@ fn detect_transport_from_url(url: &str) -> Result<DetectedTransport, String> {
         Ok(DetectedTransport::Streamable)
     } else {
         Err(format!(
-            "Invalid URL scheme. Expected ws://, wss://, http://, or https://. Got: {}",
-            url
+            "Invalid URL scheme. Expected ws://, wss://, http://, or https://. Got: {url}"
         ))
     }
 }
@@ -114,17 +113,17 @@ fn default_session_name(config: &TransportConfig) -> String {
         TransportConfig::Http { server_url, .. } => {
             // Extract hostname for prefix
             let host = extract_hostname(server_url);
-            create_session_name(Some(&format!("sse-{}", host)))
+            create_session_name(Some(&format!("sse-{host}")))
         }
         TransportConfig::Streamable { server_url, .. } => {
             // Extract hostname for prefix
             let host = extract_hostname(server_url);
-            create_session_name(Some(&format!("http-{}", host)))
+            create_session_name(Some(&format!("http-{host}")))
         }
         TransportConfig::WebSocket { server_url, .. } => {
             // Extract hostname for prefix
             let host = extract_hostname(server_url);
-            create_session_name(Some(&format!("ws-{}", host)))
+            create_session_name(Some(&format!("ws-{host}")))
         }
     }
 }

@@ -280,14 +280,17 @@ pub async fn send_to_cli_session(
 
     // Check session exists
     if !bridge.has_session(&session_id).await {
-        return Err(format!("CLI session {} not found", session_id));
+        return Err(format!("CLI session {session_id} not found"));
     }
 
     // Send the message
     bridge.send_to_session(&session_id, &message).await?;
 
     // Emit the sent message as a log event so user sees it in the UI
-    let log_id = format!("cli-inject-{}", REQUEST_COUNTER.fetch_add(1, Ordering::SeqCst));
+    let log_id = format!(
+        "cli-inject-{}",
+        REQUEST_COUNTER.fetch_add(1, Ordering::SeqCst)
+    );
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()

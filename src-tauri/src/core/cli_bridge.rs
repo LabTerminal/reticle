@@ -159,8 +159,16 @@ async fn handle_socket(socket: WebSocket, state: CliBridgeState) {
                         }
                     }
                     Err(e) => {
-                        warn!("Failed to parse CLI event: {} - {}", e, &text[..text.len().min(100)]);
-                        eprintln!("[CLI BRIDGE] Parse error: {} - {}", e, &text[..text.len().min(100)]);
+                        warn!(
+                            "Failed to parse CLI event: {} - {}",
+                            e,
+                            &text[..text.len().min(100)]
+                        );
+                        eprintln!(
+                            "[CLI BRIDGE] Parse error: {} - {}",
+                            e,
+                            &text[..text.len().min(100)]
+                        );
                     }
                 }
             }
@@ -193,7 +201,7 @@ async fn handle_cli_event(app_handle: &AppHandle, event: CliEvent) -> Result<(),
             server_name,
         } => {
             info!("CLI session started: {} ({})", session_name, session_id);
-            eprintln!("[CLI BRIDGE] Session started: {} ({})", session_name, session_id);
+            eprintln!("[CLI BRIDGE] Session started: {session_name} ({session_id})");
 
             // Get current timestamp in microseconds
             let started_at = std::time::SystemTime::now()
@@ -239,8 +247,13 @@ async fn handle_cli_event(app_handle: &AppHandle, event: CliEvent) -> Result<(),
             message_type,
             token_count,
         } => {
-            info!("CLI log: {} {} {:?}", direction, method.as_deref().unwrap_or("-"), &content[..content.len().min(50)]);
-            eprintln!("[CLI BRIDGE] Emitting log-event: id={}, direction={}, method={:?}", id, direction, method);
+            info!(
+                "CLI log: {} {} {:?}",
+                direction,
+                method.as_deref().unwrap_or("-"),
+                &content[..content.len().min(50)]
+            );
+            eprintln!("[CLI BRIDGE] Emitting log-event: id={id}, direction={direction}, method={method:?}");
 
             let payload = serde_json::json!({
                 "id": id,
@@ -257,10 +270,10 @@ async fn handle_cli_event(app_handle: &AppHandle, event: CliEvent) -> Result<(),
 
             match app_handle.emit("log-event", payload) {
                 Ok(_) => {
-                    eprintln!("[CLI BRIDGE] log-event emitted successfully for {}", id);
+                    eprintln!("[CLI BRIDGE] log-event emitted successfully for {id}");
                 }
                 Err(e) => {
-                    eprintln!("[CLI BRIDGE] ERROR emitting log-event for {}: {}", id, e);
+                    eprintln!("[CLI BRIDGE] ERROR emitting log-event for {id}: {e}");
                     return Err(e.to_string());
                 }
             }

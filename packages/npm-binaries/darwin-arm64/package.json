@@ -1,5 +1,5 @@
 {
-  "name": "@reticle/darwin-arm64",
+  "name": "@mcp-reticle/darwin-arm64",
   "version": "0.1.0",
   "description": "Reticle binary for macOS ARM64 (Apple Silicon)",
   "os": ["darwin"],

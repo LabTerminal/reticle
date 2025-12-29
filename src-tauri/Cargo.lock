@@ -3278,7 +3278,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "reticle"
+name = "reticle-app"
 version = "0.1.0"
 dependencies = [
  "async-trait",

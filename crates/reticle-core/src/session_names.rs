@@ -11,34 +11,89 @@ use uuid::Uuid;
 /// Adjectives for session names - evocative and memorable
 const ADJECTIVES: &[&str] = &[
     // Colors
-    "amber", "azure", "coral", "crimson", "cyan", "emerald", "golden", "indigo",
-    "jade", "magenta", "obsidian", "ruby", "sapphire", "scarlet", "silver", "violet",
-    // Qualities
-    "agile", "bold", "brave", "bright", "calm", "clever", "cosmic", "crystal",
-    "daring", "dynamic", "eager", "fierce", "gentle", "grand", "keen", "lively",
-    "mighty", "noble", "prime", "quick", "rapid", "serene", "sharp", "silent",
-    "sleek", "smooth", "sonic", "steady", "stellar", "subtle", "swift", "vibrant",
-    "vivid", "wild", "wise", "zen",
-    // Tech-inspired
-    "binary", "cyber", "digital", "hyper", "nano", "neural", "pixel", "quantum",
-    "turbo", "ultra", "virtual", "atomic", "electric", "fusion", "laser", "plasma",
+    "amber", "azure", "coral", "crimson", "cyan", "emerald", "golden", "indigo", "jade", "magenta",
+    "obsidian", "ruby", "sapphire", "scarlet", "silver", "violet", // Qualities
+    "agile", "bold", "brave", "bright", "calm", "clever", "cosmic", "crystal", "daring", "dynamic",
+    "eager", "fierce", "gentle", "grand", "keen", "lively", "mighty", "noble", "prime", "quick",
+    "rapid", "serene", "sharp", "silent", "sleek", "smooth", "sonic", "steady", "stellar",
+    "subtle", "swift", "vibrant", "vivid", "wild", "wise", "zen", // Tech-inspired
+    "binary", "cyber", "digital", "hyper", "nano", "neural", "pixel", "quantum", "turbo", "ultra",
+    "virtual", "atomic", "electric", "fusion", "laser", "plasma",
 ];
 
 /// Nouns for session names - memorable objects and creatures
 const NOUNS: &[&str] = &[
     // Animals
-    "falcon", "phoenix", "dragon", "tiger", "panther", "eagle", "wolf", "hawk",
-    "raven", "cobra", "viper", "jaguar", "leopard", "lynx", "orca", "shark",
-    "dolphin", "condor", "griffin", "sphinx",
+    "falcon",
+    "phoenix",
+    "dragon",
+    "tiger",
+    "panther",
+    "eagle",
+    "wolf",
+    "hawk",
+    "raven",
+    "cobra",
+    "viper",
+    "jaguar",
+    "leopard",
+    "lynx",
+    "orca",
+    "shark",
+    "dolphin",
+    "condor",
+    "griffin",
+    "sphinx",
     // Space
-    "comet", "nebula", "nova", "pulsar", "quasar", "star", "meteor", "asteroid",
-    "galaxy", "cosmos", "orbit", "eclipse", "aurora", "horizon", "zenith",
+    "comet",
+    "nebula",
+    "nova",
+    "pulsar",
+    "quasar",
+    "star",
+    "meteor",
+    "asteroid",
+    "galaxy",
+    "cosmos",
+    "orbit",
+    "eclipse",
+    "aurora",
+    "horizon",
+    "zenith",
     // Tech
-    "beacon", "circuit", "cipher", "core", "forge", "nexus", "prism", "pulse",
-    "relay", "signal", "spark", "surge", "vertex", "vector", "matrix", "proxy",
+    "beacon",
+    "circuit",
+    "cipher",
+    "core",
+    "forge",
+    "nexus",
+    "prism",
+    "pulse",
+    "relay",
+    "signal",
+    "spark",
+    "surge",
+    "vertex",
+    "vector",
+    "matrix",
+    "proxy",
     // Elements
-    "flame", "frost", "storm", "thunder", "wave", "wind", "lightning", "crystal",
-    "ember", "glacier", "ocean", "river", "shadow", "spark", "tide", "volt",
+    "flame",
+    "frost",
+    "storm",
+    "thunder",
+    "wave",
+    "wind",
+    "lightning",
+    "crystal",
+    "ember",
+    "glacier",
+    "ocean",
+    "river",
+    "shadow",
+    "spark",
+    "tide",
+    "volt",
 ];
 
 /// Session identifier with both internal UUID and display name
@@ -68,7 +123,7 @@ impl SessionId {
     pub fn for_server(server_name: &str) -> Self {
         let id = Uuid::new_v4().to_string();
         let suffix = generate_session_name();
-        let name = format!("{}-{}", server_name, suffix);
+        let name = format!("{server_name}-{suffix}");
         Self { id, name }
     }
 
@@ -97,7 +152,7 @@ pub fn generate_session_name() -> String {
     let adjective = ADJECTIVES.choose(&mut rng).unwrap_or(&"swift");
     let noun = NOUNS.choose(&mut rng).unwrap_or(&"session");
 
-    format!("{}-{}", adjective, noun)
+    format!("{adjective}-{noun}")
 }
 
 /// Generate a session name with a numeric suffix for uniqueness
@@ -109,7 +164,7 @@ pub fn generate_session_name_numbered() -> String {
     let adjective = ADJECTIVES.choose(&mut rng).unwrap_or(&"swift");
     let noun = NOUNS.choose(&mut rng).unwrap_or(&"session");
 
-    format!("{}-{}-{}", adjective, noun, num)
+    format!("{adjective}-{noun}-{num}")
 }
 
 /// Generate a short session ID (8 chars) for display purposes
@@ -213,6 +268,6 @@ mod tests {
     #[test]
     fn test_display() {
         let session = SessionId::with_name("test-session".to_string());
-        assert_eq!(format!("{}", session), "test-session");
+        assert_eq!(format!("{session}"), "test-session");
     }
 }

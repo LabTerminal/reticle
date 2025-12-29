@@ -473,19 +473,23 @@ pub mod websocket {
             );
 
             let is_connected = self.sender.lock().await.is_some();
-            eprintln!("[reticle] GUI connected: {} (entry {})", is_connected, entry.id);
+            eprintln!(
+                "[reticle] GUI connected: {} (entry {})",
+                is_connected, entry.id
+            );
 
-            let result = self.send(serde_json::json!({
-                "type": "log",
-                "id": entry.id,
-                "session_id": entry.session_id,
-                "timestamp": entry.timestamp,
-                "direction": direction,
-                "content": entry.content,
-                "method": entry.method,
-                "server_name": Some(&self.server_name),
-            }))
-            .await;
+            let result = self
+                .send(serde_json::json!({
+                    "type": "log",
+                    "id": entry.id,
+                    "session_id": entry.session_id,
+                    "timestamp": entry.timestamp,
+                    "direction": direction,
+                    "content": entry.content,
+                    "method": entry.method,
+                    "server_name": Some(&self.server_name),
+                }))
+                .await;
 
             if let Err(ref e) = result {
                 eprintln!("[reticle] emit_log FAILED for {}: {}", entry.id, e);
@@ -566,6 +570,7 @@ pub use websocket::WebSocketEventSink;
 /// - No WebSocket framing overhead
 /// - Direct memory-to-memory transfer
 /// - Newline-delimited JSON for simple parsing
+#[cfg(unix)]
 pub mod unix_socket {
     use super::*;
     use std::path::PathBuf;
@@ -593,7 +598,6 @@ pub mod unix_socket {
     #[serde(tag = "type")]
     pub enum SocketEvent {
         // === CLI → GUI events ===
-
         #[serde(rename = "session_started")]
         SessionStarted {
             session_id: String,
@@ -618,7 +622,6 @@ pub mod unix_socket {
         },
 
         // === GUI → CLI events ===
-
         /// Inject a message into the MCP server's stdin
         #[serde(rename = "inject_message")]
         InjectMessage {
@@ -712,19 +715,17 @@ pub mod unix_socket {
                     }
 
                     // Parse the incoming event
-                    if let Ok(event) = serde_json::from_str::<SocketEvent>(&line) {
-                        if let SocketEvent::InjectMessage {
-                            session_id: target_session,
-                            message,
-                        } = event
-                        {
-                            // Check if this message is for our session
-                            let our_session = session_id.lock().await.clone();
-                            if our_session.as_ref() == Some(&target_session) {
-                                tracing::debug!("Received inject command for our session");
-                                if let Err(e) = inject_tx.send(message).await {
-                                    tracing::warn!("Failed to forward inject command: {}", e);
-                                }
+                    if let Ok(SocketEvent::InjectMessage {
+                        session_id: target_session,
+                        message,
+                    }) = serde_json::from_str::<SocketEvent>(&line)
+                    {
+                        // Check if this message is for our session
+                        let our_session = session_id.lock().await.clone();
+                        if our_session.as_ref() == Some(&target_session) {
+                            tracing::debug!("Received inject command for our session");
+                            if let Err(e) = inject_tx.send(message).await {
+                                tracing::warn!("Failed to forward inject command: {}", e);
                             }
                         }
                     }
@@ -773,16 +774,14 @@ pub mod unix_socket {
                                     continue;
                                 }
 
-                                if let Ok(event) = serde_json::from_str::<SocketEvent>(&line) {
-                                    if let SocketEvent::InjectMessage {
-                                        session_id: target_session,
-                                        message,
-                                    } = event
-                                    {
-                                        let our_session = session_id.lock().await.clone();
-                                        if our_session.as_ref() == Some(&target_session) {
-                                            let _ = inject_tx.send(message).await;
-                                        }
+                                if let Ok(SocketEvent::InjectMessage {
+                                    session_id: target_session,
+                                    message,
+                                }) = serde_json::from_str::<SocketEvent>(&line)
+                                {
+                                    let our_session = session_id.lock().await.clone();
+                                    if our_session.as_ref() == Some(&target_session) {
+                                        let _ = inject_tx.send(message).await;
                                     }
                                 }
                             }
@@ -900,7 +899,114 @@ pub mod unix_socket {
     }
 }
 
-pub use unix_socket::{UnixSocketEventSink, SocketEvent, InjectReceiver, get_socket_path, DEFAULT_SOCKET_PATH};
+/// Windows stub module - Unix sockets are not available on Windows
+#[cfg(windows)]
+pub mod unix_socket {
+    use super::*;
+    use std::path::PathBuf;
+    use tokio::sync::mpsc;
+
+    /// Default socket path (not used on Windows)
+    pub const DEFAULT_SOCKET_PATH: &str = "";
+
+    /// Get the socket path (not used on Windows)
+    pub fn get_socket_path() -> PathBuf {
+        PathBuf::new()
+    }
+
+    /// Event types sent over the socket
+    #[derive(Debug, Clone, Serialize, serde::Deserialize)]
+    #[serde(tag = "type")]
+    pub enum SocketEvent {
+        #[serde(rename = "session_started")]
+        SessionStarted {
+            session_id: String,
+            session_name: String,
+            server_name: String,
+        },
+        #[serde(rename = "session_ended")]
+        SessionEnded { session_id: String },
+        #[serde(rename = "log")]
+        Log {
+            id: String,
+            session_id: String,
+            timestamp: u64,
+            direction: String,
+            content: String,
+            method: Option<String>,
+            server_name: String,
+            message_type: String,
+            token_count: u64,
+        },
+        #[serde(rename = "inject_message")]
+        InjectMessage { session_id: String, message: String },
+    }
+
+    /// Receiver for inject commands (stub on Windows)
+    pub type InjectReceiver = mpsc::Receiver<String>;
+
+    /// Unix socket event sink stub for Windows
+    pub struct UnixSocketEventSink {
+        _server_name: String,
+        _inject_tx: mpsc::Sender<String>,
+    }
+
+    impl UnixSocketEventSink {
+        /// Create a new stub event sink (no-op on Windows)
+        pub async fn new(server_name: String) -> (Self, InjectReceiver) {
+            let (inject_tx, inject_rx) = mpsc::channel(1);
+            (
+                Self {
+                    _server_name: server_name,
+                    _inject_tx: inject_tx,
+                },
+                inject_rx,
+            )
+        }
+
+        /// Set session ID (no-op on Windows)
+        pub async fn set_session_id(&self, _session_id: String) {}
+    }
+
+    #[async_trait]
+    impl EventSink for UnixSocketEventSink {
+        async fn emit_log(&self, _entry: &LogEntry) -> Result<(), String> {
+            Ok(())
+        }
+
+        async fn emit_session_started(
+            &self,
+            _session_id: &str,
+            _session_name: &str,
+        ) -> Result<(), String> {
+            Ok(())
+        }
+
+        async fn emit_session_ended(&self, _session_id: &str) -> Result<(), String> {
+            Ok(())
+        }
+
+        async fn emit_recording_started(&self, _session_id: &str) -> Result<(), String> {
+            Ok(())
+        }
+
+        async fn emit_recording_stopped(&self, _session: &RecordedSession) -> Result<(), String> {
+            Ok(())
+        }
+
+        async fn emit_custom<T: Serialize + Send + Sync>(
+            &self,
+            _event_name: &str,
+            _payload: &T,
+        ) -> Result<(), String> {
+            Ok(())
+        }
+    }
+}
+
+pub use unix_socket::{
+    get_socket_path, InjectReceiver, SocketEvent, UnixSocketEventSink, DEFAULT_SOCKET_PATH,
+};
 
 #[cfg(test)]
 mod tests {

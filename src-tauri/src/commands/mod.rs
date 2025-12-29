@@ -20,7 +20,10 @@ pub mod tokens;
 
 // Re-export command functions for use in main.rs
 pub use cli_bridge::{get_cli_bridge_status, start_cli_bridge_server, stop_cli_bridge_server};
-pub use interaction::{can_interact, get_cli_sessions, get_mcp_methods, send_raw_message, send_request, send_to_cli_session};
+pub use interaction::{
+    can_interact, get_cli_sessions, get_mcp_methods, send_raw_message, send_request,
+    send_to_cli_session,
+};
 pub use proxy::{start_proxy, start_proxy_v2, start_remote_proxy, stop_proxy};
 pub use recording::{
     add_recording_tag, delete_recorded_session, export_session, export_session_csv,
