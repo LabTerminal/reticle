@@ -237,10 +237,80 @@ pub async fn send_raw_message(
 }
 
 /// Check if interaction (sending) is available
+///
+/// Returns true if either:
+/// - A GUI-managed proxy is running (stdio or HTTP)
+/// - A CLI session is active via socket bridge
 #[tauri::command]
 pub async fn can_interact(state: State<'_, AppState>) -> Result<bool, String> {
+    // Check GUI-managed proxy first
     let proxy_state = state.proxy.lock().await;
-    Ok(proxy_state.can_send())
+    if proxy_state.can_send() {
+        return Ok(true);
+    }
+    drop(proxy_state);
+
+    // Check for active CLI sessions via socket bridge
+    let bridge = crate::core::socket_bridge::get_socket_bridge();
+    let sessions = bridge.get_active_sessions().await;
+    Ok(!sessions.is_empty())
+}
+
+/// Get list of active CLI sessions that support interaction
+#[tauri::command]
+pub async fn get_cli_sessions() -> Result<Vec<String>, String> {
+    let bridge = crate::core::socket_bridge::get_socket_bridge();
+    Ok(bridge.get_active_sessions().await)
+}
+
+/// Send a message to a CLI session
+///
+/// Injects a JSON-RPC message into the MCP server's stdin via the CLI wrapper.
+#[tauri::command]
+pub async fn send_to_cli_session(
+    session_id: String,
+    message: String,
+    app_handle: AppHandle,
+) -> Result<(), String> {
+    // Validate JSON
+    let json: serde_json::Value =
+        serde_json::from_str(&message).map_err(|e| format!("Invalid JSON: {e}"))?;
+
+    let bridge = crate::core::socket_bridge::get_socket_bridge();
+
+    // Check session exists
+    if !bridge.has_session(&session_id).await {
+        return Err(format!("CLI session {session_id} not found"));
+    }
+
+    // Send the message
+    bridge.send_to_session(&session_id, &message).await?;
+
+    // Emit the sent message as a log event so user sees it in the UI
+    let log_id = format!(
+        "cli-inject-{}",
+        REQUEST_COUNTER.fetch_add(1, Ordering::SeqCst)
+    );
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_micros() as u64;
+
+    let _ = app_handle.emit(
+        "log-event",
+        serde_json::json!({
+            "id": log_id,
+            "session_id": session_id,
+            "timestamp": timestamp,
+            "direction": "in",
+            "content": message,
+            "method": json.get("method").and_then(|m| m.as_str()),
+            "message_type": "jsonrpc",
+            "from_gui_inject": true
+        }),
+    );
+
+    Ok(())
 }
 
 /// Get common MCP methods for quick access

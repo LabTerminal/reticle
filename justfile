@@ -74,11 +74,30 @@ test:
     cd crates/reticle-core && cargo test
     cd src-tauri && cargo test
 
-# Build CLI only (copies to ./target/release for consistency)
+# Build CLI only (to project target/release)
 build-cli:
-    cd crates/reticle-cli && cargo build --release
-    mkdir -p target/release
-    cp crates/reticle-cli/target/release/reticle target/release/
+    CARGO_TARGET_DIR={{justfile_directory()}}/target cargo build --release --manifest-path crates/reticle-cli/Cargo.toml
+
+# Build GUI app only
+build-gui:
+    cd src-tauri && cargo build --release
+
+# Install CLI to ~/.local/bin
+install-cli: build-cli
+    mkdir -p ~/.local/bin
+    cp target/release/reticle ~/.local/bin/
+    @echo "Installed reticle to ~/.local/bin/reticle"
+
+# Run GUI via CLI (uses reticle ui --dev if available)
+ui:
+    #!/usr/bin/env bash
+    if command -v reticle &> /dev/null; then
+        export RETICLE_PROJECT_ROOT="{{justfile_directory()}}"
+        exec reticle ui --dev
+    else
+        echo "reticle CLI not found. Run 'just dev' instead or 'just install-cli' first."
+        exit 1
+    fi
 
 # Install frontend dependencies
 setup:
@@ -177,17 +196,20 @@ info:
     @echo ""
     @echo "Project structure:"
     @echo "  frontend/           - React frontend"
-    @echo "  src-tauri/          - Tauri desktop app"
+    @echo "  src-tauri/          - Tauri desktop app (reticle-app)"
     @echo "  crates/reticle-core - Core library (protocol, token counting)"
-    @echo "  crates/reticle-cli  - Standalone CLI proxy"
+    @echo "  crates/reticle-cli  - Standalone CLI proxy (reticle)"
     @echo "  scripts/            - Python test utilities"
     @echo ""
     @echo "Quick start:"
-    @echo "  just setup     - Install dependencies"
-    @echo "  just dev       - Start development server"
-    @echo "  just build     - Build for production"
-    @echo "  just build-cli - Build CLI only"
-    @echo "  just test      - Run all tests"
+    @echo "  just setup       - Install dependencies"
+    @echo "  just dev         - Start development server (Vite + Tauri)"
+    @echo "  just ui          - Run GUI via CLI (requires: just install-cli)"
+    @echo "  just build       - Build for production"
+    @echo "  just build-cli   - Build CLI only"
+    @echo "  just build-gui   - Build GUI app only"
+    @echo "  just install-cli - Install CLI to ~/.local/bin"
+    @echo "  just test        - Run all tests"
 
 # Show current Rust/Node versions
 versions:

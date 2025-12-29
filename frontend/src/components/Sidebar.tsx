@@ -15,6 +15,7 @@ export function Sidebar() {
     currentSession,
     setCurrentSession,
     isConnected,
+    isRecording,
     logs,
     filters,
     setFilters,
@@ -469,7 +470,11 @@ export function Sidebar() {
 
           {/* Quick Tag Input for Current Session */}
           {currentSession && (
-            <QuickTagInput sessionId={currentSession.id} localOnly />
+            <QuickTagInput
+              sessionId={currentSession.id}
+              localOnly={!isRecording}
+              isRecording={isRecording}
+            />
           )}
         </div>
       </ScrollArea>

@@ -242,7 +242,7 @@ mod tests {
             duration_ms: None,
         };
 
-        let debug_str = format!("{:?}", response);
+        let debug_str = format!("{response:?}");
         assert!(debug_str.contains("SessionMetadataResponse"));
         assert!(debug_str.contains("id:"));
     }

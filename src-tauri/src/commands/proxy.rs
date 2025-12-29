@@ -1,3 +1,4 @@
+use reticle_core::session_names::{create_session_name, generate_session_name};
 use tauri::{AppHandle, State};
 use tokio::process::Command;
 
@@ -39,8 +40,7 @@ fn detect_transport_from_url(url: &str) -> Result<DetectedTransport, String> {
         Ok(DetectedTransport::Streamable)
     } else {
         Err(format!(
-            "Invalid URL scheme. Expected ws://, wss://, http://, or https://. Got: {}",
-            url
+            "Invalid URL scheme. Expected ws://, wss://, http://, or https://. Got: {url}"
         ))
     }
 }
@@ -92,30 +92,54 @@ pub async fn stop_proxy(state: State<'_, AppState>) -> std::result::Result<(), S
 }
 
 /// Generate a default session name based on transport config
+///
+/// Uses beautiful, memorable names like "swift-falcon" or "cosmic-nebula"
+/// prefixed with a server identifier when available.
 fn default_session_name(config: &TransportConfig) -> String {
     match config {
         TransportConfig::Stdio { command, .. } => {
             if command.is_empty() || command == "demo" {
-                "Demo Session".to_string()
+                // Demo mode gets a beautiful random name
+                format!("demo-{}", generate_session_name())
             } else {
-                // Use the command name as the session name
-                std::path::Path::new(command)
+                // Extract command basename and use as prefix
+                let basename = std::path::Path::new(command)
                     .file_name()
                     .and_then(|s| s.to_str())
-                    .unwrap_or(command)
-                    .to_string()
+                    .unwrap_or("stdio");
+                create_session_name(Some(basename))
             }
         }
         TransportConfig::Http { server_url, .. } => {
-            format!("HTTP: {server_url}")
+            // Extract hostname for prefix
+            let host = extract_hostname(server_url);
+            create_session_name(Some(&format!("sse-{host}")))
         }
         TransportConfig::Streamable { server_url, .. } => {
-            format!("Streamable: {server_url}")
+            // Extract hostname for prefix
+            let host = extract_hostname(server_url);
+            create_session_name(Some(&format!("http-{host}")))
         }
         TransportConfig::WebSocket { server_url, .. } => {
-            format!("WebSocket: {server_url}")
+            // Extract hostname for prefix
+            let host = extract_hostname(server_url);
+            create_session_name(Some(&format!("ws-{host}")))
         }
     }
+}
+
+/// Extract hostname from a URL for session naming
+fn extract_hostname(url: &str) -> String {
+    // Simple hostname extraction without full URL parsing
+    url.trim_start_matches("http://")
+        .trim_start_matches("https://")
+        .trim_start_matches("ws://")
+        .trim_start_matches("wss://")
+        .split('/')
+        .next()
+        .and_then(|host| host.split(':').next())
+        .unwrap_or("remote")
+        .to_string()
 }
 
 /// Tauri command to start proxy with transport configuration

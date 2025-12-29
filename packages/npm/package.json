@@ -1,5 +1,5 @@
 {
-  "name": "reticle",
+  "name": "mcp-reticle",
   "version": "0.1.0",
   "description": "Real-time debugging proxy for MCP (Model Context Protocol) servers",
   "keywords": ["mcp", "debugging", "proxy", "ai", "llm", "model-context-protocol"],
@@ -11,17 +11,17 @@
   },
   "homepage": "https://github.com/labterminal/reticle",
   "bin": {
-    "reticle": "bin/reticle.js"
+    "mcp-reticle": "bin/reticle.js"
   },
   "scripts": {
     "postinstall": "node scripts/postinstall.js"
   },
   "optionalDependencies": {
-    "@reticle/darwin-arm64": "0.1.0",
-    "@reticle/darwin-x64": "0.1.0",
-    "@reticle/linux-x64": "0.1.0",
-    "@reticle/linux-arm64": "0.1.0",
-    "@reticle/win32-x64": "0.1.0"
+    "@mcp-reticle/darwin-arm64": "0.1.0",
+    "@mcp-reticle/darwin-x64": "0.1.0",
+    "@mcp-reticle/linux-x64": "0.1.0",
+    "@mcp-reticle/linux-arm64": "0.1.0",
+    "@mcp-reticle/win32-x64": "0.1.0"
   },
   "engines": {
     "node": ">=16"

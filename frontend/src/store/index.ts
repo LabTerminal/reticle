@@ -8,6 +8,10 @@ interface ReticleStore {
   isConnected: boolean
   setConnected: (connected: boolean) => void
 
+  // Recording state
+  isRecording: boolean
+  setRecording: (recording: boolean) => void
+
   // Logs
   logs: LogEntry[]
   addLog: (log: LogEntry) => void
@@ -49,6 +53,10 @@ export const useReticleStore = create<ReticleStore>((set, get) => ({
   isConnected: false,
   setConnected: (connected) => set({ isConnected: connected }),
 
+  // Recording state
+  isRecording: false,
+  setRecording: (recording) => set({ isRecording: recording }),
+
   // Logs
   logs: [],
   addLog: (log) =>
@@ -59,16 +67,22 @@ export const useReticleStore = create<ReticleStore>((set, get) => ({
         return state
       }
 
-      // Check for content-based duplicates within a short time window (500ms)
+      // Check for content-based duplicates within a short time window
+      // Note: timestamps are in MICROSECONDS from Rust backend
       // This handles cases where the same message is emitted from different sources
       // with different log IDs (e.g., sent request echoed back via stdout/SSE)
-      const duplicateWindow = 500 // ms
+      const duplicateWindowMicros = 500 * 1000 // 500ms in microseconds
       const recentLogs = state.logs.filter(
         (existingLog) =>
-          Math.abs(existingLog.timestamp - log.timestamp) < duplicateWindow
+          Math.abs(existingLog.timestamp - log.timestamp) < duplicateWindowMicros
       )
-      if (recentLogs.some((existingLog) => existingLog.content === log.content)) {
-        console.warn(`Duplicate log entry detected (same content within ${duplicateWindow}ms), skipping: ${log.id}`)
+
+      // Only check for content duplicates if same session_id (different CLI sessions should not dedupe)
+      const sameSessionDupes = recentLogs.filter(
+        (existingLog) => existingLog.session_id === log.session_id
+      )
+      if (sameSessionDupes.some((existingLog) => existingLog.content === log.content)) {
+        console.warn(`Duplicate log entry detected (same content within 500ms in same session), skipping: ${log.id}`)
         return state
       }
 

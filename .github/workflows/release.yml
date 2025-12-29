@@ -12,8 +12,9 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-    name: Build ${{ matrix.target }}
+  # Build CLI for all platforms
+  build-cli:
+    name: Build CLI ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -21,25 +22,25 @@ jobs:
         include:
           - target: x86_64-apple-darwin
             os: macos-latest
-            artifact: reticle-darwin-x86_64
+            artifact: reticle-cli-darwin-x86_64
           - target: aarch64-apple-darwin
             os: macos-latest
-            artifact: reticle-darwin-aarch64
+            artifact: reticle-cli-darwin-aarch64
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-            artifact: reticle-linux-x86_64
+            artifact: reticle-cli-linux-x86_64
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
-            artifact: reticle-linux-aarch64
+            artifact: reticle-cli-linux-aarch64
           - target: x86_64-pc-windows-msvc
             os: windows-latest
-            artifact: reticle-windows-x86_64
+            artifact: reticle-cli-windows-x86_64
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Rust
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
@@ -57,7 +58,7 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           mkdir -p dist
-          cp crates/reticle-cli/target/${{ matrix.target }}/release/reticle dist/
+          cp target/${{ matrix.target }}/release/reticle dist/
           cd dist
           tar -czvf ${{ matrix.artifact }}.tar.gz reticle
           shasum -a 256 ${{ matrix.artifact }}.tar.gz > ${{ matrix.artifact }}.tar.gz.sha256
@@ -66,7 +67,7 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           mkdir dist
-          cp crates/reticle-cli/target/${{ matrix.target }}/release/reticle.exe dist/
+          cp target/${{ matrix.target }}/release/reticle.exe dist/
           cd dist
           7z a ${{ matrix.artifact }}.zip reticle.exe
           certutil -hashfile ${{ matrix.artifact }}.zip SHA256 > ${{ matrix.artifact }}.zip.sha256
@@ -77,9 +78,128 @@ jobs:
           name: ${{ matrix.artifact }}
           path: dist/*
 
+  # Build GUI app for all platforms using Tauri
+  build-gui:
+    name: Build GUI ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-x86_64
+            os: macos-latest
+            target: x86_64-apple-darwin
+            artifact: reticle-app-darwin-x86_64
+          - platform: macos-aarch64
+            os: macos-latest
+            target: aarch64-apple-darwin
+            artifact: reticle-app-darwin-aarch64
+          - platform: linux-x86_64
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            artifact: reticle-app-linux-x86_64
+          - platform: windows-x86_64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: reticle-app-windows-x86_64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: src-tauri
+          args: --target ${{ matrix.target }}
+
+      - name: Package macOS (DMG + standalone binary)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p dist
+          # Copy DMG
+          cp src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg dist/${{ matrix.artifact }}.dmg 2>/dev/null || true
+          # Copy standalone binary
+          cp src-tauri/target/${{ matrix.target }}/release/reticle-app dist/reticle-app
+          cd dist
+          tar -czvf ${{ matrix.artifact }}.tar.gz reticle-app
+          shasum -a 256 ${{ matrix.artifact }}.tar.gz > ${{ matrix.artifact }}.tar.gz.sha256
+          if [ -f "${{ matrix.artifact }}.dmg" ]; then
+            shasum -a 256 ${{ matrix.artifact }}.dmg > ${{ matrix.artifact }}.dmg.sha256
+          fi
+
+      - name: Package Linux (AppImage + standalone binary)
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p dist
+          # Copy AppImage
+          cp src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage dist/${{ matrix.artifact }}.AppImage 2>/dev/null || true
+          # Copy deb
+          cp src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.deb dist/${{ matrix.artifact }}.deb 2>/dev/null || true
+          # Copy standalone binary
+          cp src-tauri/target/${{ matrix.target }}/release/reticle-app dist/reticle-app
+          cd dist
+          tar -czvf ${{ matrix.artifact }}.tar.gz reticle-app
+          sha256sum ${{ matrix.artifact }}.tar.gz > ${{ matrix.artifact }}.tar.gz.sha256
+          if [ -f "${{ matrix.artifact }}.AppImage" ]; then
+            sha256sum ${{ matrix.artifact }}.AppImage > ${{ matrix.artifact }}.AppImage.sha256
+          fi
+          if [ -f "${{ matrix.artifact }}.deb" ]; then
+            sha256sum ${{ matrix.artifact }}.deb > ${{ matrix.artifact }}.deb.sha256
+          fi
+
+      - name: Package Windows (MSI + standalone binary)
+        if: runner.os == 'Windows'
+        run: |
+          mkdir dist
+          # Copy MSI
+          Copy-Item src-tauri/target/${{ matrix.target }}/release/bundle/msi/*.msi dist/${{ matrix.artifact }}.msi -ErrorAction SilentlyContinue
+          # Copy NSIS installer
+          Copy-Item src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe dist/${{ matrix.artifact }}-setup.exe -ErrorAction SilentlyContinue
+          # Copy standalone binary
+          Copy-Item src-tauri/target/${{ matrix.target }}/release/reticle-app.exe dist/reticle-app.exe
+          cd dist
+          7z a ${{ matrix.artifact }}.zip reticle-app.exe
+          certutil -hashfile ${{ matrix.artifact }}.zip SHA256 > ${{ matrix.artifact }}.zip.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/*
+
   release:
     name: Create Release
-    needs: build
+    needs: [build-cli, build-gui]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -92,8 +212,11 @@ jobs:
       - name: Prepare release assets
         run: |
           mkdir release
-          find artifacts -type f \( -name "*.tar.gz" -o -name "*.zip" -o -name "*.sha256" \) -exec cp {} release/ \;
-          cp scripts/install.sh release/
+          # Copy all CLI and GUI artifacts
+          find artifacts -type f \( -name "*.tar.gz" -o -name "*.zip" -o -name "*.sha256" -o -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.msi" -o -name "*-setup.exe" \) -exec cp {} release/ \;
+          # Copy install script
+          cp scripts/install.sh release/ 2>/dev/null || true
+          ls -la release/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -115,10 +238,11 @@ jobs:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Download all artifacts
+      - name: Download CLI artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          pattern: reticle-cli-*
 
       - name: Prepare npm packages
         run: |
@@ -132,27 +256,27 @@ jobs:
           done
 
           # Copy binaries to platform packages
-          for artifact_dir in artifacts/reticle-*; do
+          for artifact_dir in artifacts/reticle-cli-*; do
             artifact_name=$(basename "$artifact_dir")
 
             case "$artifact_name" in
-              reticle-darwin-aarch64)
+              reticle-cli-darwin-aarch64)
                 mkdir -p packages/npm-binaries/darwin-arm64/bin
                 cp "$artifact_dir/reticle" packages/npm-binaries/darwin-arm64/bin/
                 ;;
-              reticle-darwin-x86_64)
+              reticle-cli-darwin-x86_64)
                 mkdir -p packages/npm-binaries/darwin-x64/bin
                 cp "$artifact_dir/reticle" packages/npm-binaries/darwin-x64/bin/
                 ;;
-              reticle-linux-x86_64)
+              reticle-cli-linux-x86_64)
                 mkdir -p packages/npm-binaries/linux-x64/bin
                 cp "$artifact_dir/reticle" packages/npm-binaries/linux-x64/bin/
                 ;;
-              reticle-linux-aarch64)
+              reticle-cli-linux-aarch64)
                 mkdir -p packages/npm-binaries/linux-arm64/bin
                 cp "$artifact_dir/reticle" packages/npm-binaries/linux-arm64/bin/
                 ;;
-              reticle-windows-x86_64)
+              reticle-cli-windows-x86_64)
                 mkdir -p packages/npm-binaries/win32-x64/bin
                 cp "$artifact_dir/reticle.exe" packages/npm-binaries/win32-x64/bin/
                 ;;
@@ -189,10 +313,11 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Download all artifacts
+      - name: Download CLI artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          pattern: reticle-cli-*
 
       - name: Prepare Python package
         run: |
@@ -200,34 +325,34 @@ jobs:
 
           # Update version in pyproject.toml
           sed -i "s/version = \".*\"/version = \"$VERSION\"/" packages/python/pyproject.toml
-          sed -i "s/__version__ = \".*\"/__version__ = \"$VERSION\"/" packages/python/reticle/__init__.py
+          sed -i "s/__version__ = \".*\"/__version__ = \"$VERSION\"/" packages/python/mcp_reticle/__init__.py
 
           # Copy binaries into package structure
-          mkdir -p packages/python/reticle/bin
+          mkdir -p packages/python/mcp_reticle/bin
 
-          for artifact_dir in artifacts/reticle-*; do
+          for artifact_dir in artifacts/reticle-cli-*; do
             artifact_name=$(basename "$artifact_dir")
 
             case "$artifact_name" in
-              reticle-darwin-aarch64)
-                mkdir -p packages/python/reticle/bin/darwin-aarch64
-                cp "$artifact_dir/reticle" packages/python/reticle/bin/darwin-aarch64/
+              reticle-cli-darwin-aarch64)
+                mkdir -p packages/python/mcp_reticle/bin/darwin-aarch64
+                cp "$artifact_dir/reticle" packages/python/mcp_reticle/bin/darwin-aarch64/
                 ;;
-              reticle-darwin-x86_64)
-                mkdir -p packages/python/reticle/bin/darwin-x86_64
-                cp "$artifact_dir/reticle" packages/python/reticle/bin/darwin-x86_64/
+              reticle-cli-darwin-x86_64)
+                mkdir -p packages/python/mcp_reticle/bin/darwin-x86_64
+                cp "$artifact_dir/reticle" packages/python/mcp_reticle/bin/darwin-x86_64/
                 ;;
-              reticle-linux-x86_64)
-                mkdir -p packages/python/reticle/bin/linux-x86_64
-                cp "$artifact_dir/reticle" packages/python/reticle/bin/linux-x86_64/
+              reticle-cli-linux-x86_64)
+                mkdir -p packages/python/mcp_reticle/bin/linux-x86_64
+                cp "$artifact_dir/reticle" packages/python/mcp_reticle/bin/linux-x86_64/
                 ;;
-              reticle-linux-aarch64)
-                mkdir -p packages/python/reticle/bin/linux-aarch64
-                cp "$artifact_dir/reticle" packages/python/reticle/bin/linux-aarch64/
+              reticle-cli-linux-aarch64)
+                mkdir -p packages/python/mcp_reticle/bin/linux-aarch64
+                cp "$artifact_dir/reticle" packages/python/mcp_reticle/bin/linux-aarch64/
                 ;;
-              reticle-windows-x86_64)
-                mkdir -p packages/python/reticle/bin/windows-x86_64
-                cp "$artifact_dir/reticle.exe" packages/python/reticle/bin/windows-x86_64/
+              reticle-cli-windows-x86_64)
+                mkdir -p packages/python/mcp_reticle/bin/windows-x86_64
+                cp "$artifact_dir/reticle.exe" packages/python/mcp_reticle/bin/windows-x86_64/
                 ;;
             esac
           done
@@ -255,35 +380,36 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          pattern: reticle-cli-*
 
       - name: Update Homebrew formula
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
 
           # Read SHA256 hashes
-          DARWIN_ARM64_SHA=$(cat artifacts/reticle-darwin-aarch64/reticle-darwin-aarch64.tar.gz.sha256 | awk '{print $1}')
-          DARWIN_X64_SHA=$(cat artifacts/reticle-darwin-x86_64/reticle-darwin-x86_64.tar.gz.sha256 | awk '{print $1}')
-          LINUX_ARM64_SHA=$(cat artifacts/reticle-linux-aarch64/reticle-linux-aarch64.tar.gz.sha256 | awk '{print $1}')
-          LINUX_X64_SHA=$(cat artifacts/reticle-linux-x86_64/reticle-linux-x86_64.tar.gz.sha256 | awk '{print $1}')
+          DARWIN_ARM64_SHA=$(cat artifacts/reticle-cli-darwin-aarch64/reticle-cli-darwin-aarch64.tar.gz.sha256 | awk '{print $1}')
+          DARWIN_X64_SHA=$(cat artifacts/reticle-cli-darwin-x86_64/reticle-cli-darwin-x86_64.tar.gz.sha256 | awk '{print $1}')
+          LINUX_ARM64_SHA=$(cat artifacts/reticle-cli-linux-aarch64/reticle-cli-linux-aarch64.tar.gz.sha256 | awk '{print $1}')
+          LINUX_X64_SHA=$(cat artifacts/reticle-cli-linux-x86_64/reticle-cli-linux-x86_64.tar.gz.sha256 | awk '{print $1}')
 
           # Update formula
-          sed -i "s/version \".*\"/version \"$VERSION\"/" packages/homebrew/reticle.rb
-          sed -i "s/PLACEHOLDER_SHA256_DARWIN_ARM64/$DARWIN_ARM64_SHA/" packages/homebrew/reticle.rb
-          sed -i "s/PLACEHOLDER_SHA256_DARWIN_X64/$DARWIN_X64_SHA/" packages/homebrew/reticle.rb
-          sed -i "s/PLACEHOLDER_SHA256_LINUX_ARM64/$LINUX_ARM64_SHA/" packages/homebrew/reticle.rb
-          sed -i "s/PLACEHOLDER_SHA256_LINUX_X64/$LINUX_X64_SHA/" packages/homebrew/reticle.rb
+          sed -i "s/version \".*\"/version \"$VERSION\"/" packages/homebrew/mcp-reticle.rb
+          sed -i "s/PLACEHOLDER_SHA256_DARWIN_ARM64/$DARWIN_ARM64_SHA/" packages/homebrew/mcp-reticle.rb
+          sed -i "s/PLACEHOLDER_SHA256_DARWIN_X64/$DARWIN_X64_SHA/" packages/homebrew/mcp-reticle.rb
+          sed -i "s/PLACEHOLDER_SHA256_LINUX_ARM64/$LINUX_ARM64_SHA/" packages/homebrew/mcp-reticle.rb
+          sed -i "s/PLACEHOLDER_SHA256_LINUX_X64/$LINUX_X64_SHA/" packages/homebrew/mcp-reticle.rb
 
           echo "Updated formula:"
-          cat packages/homebrew/reticle.rb
+          cat packages/homebrew/mcp-reticle.rb
 
       - name: Push to homebrew-tap
         uses: dmnemec/copy_file_to_another_repo_action@main
         env:
           API_TOKEN_GITHUB: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         with:
-          source_file: 'packages/homebrew/reticle.rb'
+          source_file: 'packages/homebrew/mcp-reticle.rb'
           destination_repo: 'labterminal/homebrew-tap'
           destination_folder: 'Formula'
           user_email: 'github-actions[bot]@users.noreply.github.com'
           user_name: 'github-actions[bot]'
-          commit_message: 'Update reticle to ${{ github.ref_name }}'
+          commit_message: 'Update mcp-reticle to ${{ github.ref_name }}'

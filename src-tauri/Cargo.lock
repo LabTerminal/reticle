@@ -3278,7 +3278,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "reticle"
+name = "reticle-app"
 version = "0.1.0"
 dependencies = [
  "async-trait",
@@ -3290,6 +3290,7 @@ dependencies = [
  "futures-util",
  "getrandom 0.2.16",
  "hex",
+ "once_cell",
  "reqwest 0.11.27",
  "reticle-core",
  "serde",
@@ -3317,12 +3318,14 @@ dependencies = [
  "bincode",
  "chrono",
  "dirs 5.0.1",
+ "rand 0.8.5",
  "serde",
  "serde_json",
  "sled",
  "thiserror 1.0.69",
  "tokio",
  "tracing",
+ "uuid",
 ]
 
 [[package]]

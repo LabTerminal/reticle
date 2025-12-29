@@ -1,5 +1,5 @@
 {
-  "name": "@reticle/linux-x64",
+  "name": "@mcp-reticle/linux-x64",
   "version": "0.1.0",
   "description": "Reticle binary for Linux x64",
   "os": ["linux"],

@@ -10,8 +10,11 @@ import {
   Pause,
   Play,
   Copy,
+  Sparkles,
+  Loader2,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { invoke } from '@tauri-apps/api/core'
 import {
   useReticleStore,
   parseLogMessage,
@@ -244,6 +247,23 @@ export function LogStream() {
   const [isLive, setIsLive] = useState(true)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [searchValue, setSearchValue] = useState(filters.searchText || '')
+  const [isDemoLoading, setIsDemoLoading] = useState(false)
+
+  // Start demo handler
+  const startDemo = async () => {
+    setIsDemoLoading(true)
+    try {
+      await invoke('start_proxy', { command: 'demo', args: [] })
+      toast.success('Demo started successfully')
+    } catch (error) {
+      console.error('Demo start error:', error)
+      toast.error('Failed to start demo', {
+        description: typeof error === 'string' ? error : (error instanceof Error ? error.message : String(error)),
+      })
+    } finally {
+      setIsDemoLoading(false)
+    }
+  }
 
   // Check if filters are active
   const hasActiveFilters = !!(filters.searchText || filters.method || filters.direction)
@@ -450,8 +470,23 @@ export function LogStream() {
                   <p className="text-sm text-muted-foreground mb-4 max-w-xs mx-auto">
                     Start a proxy to capture messages between your client and MCP server.
                   </p>
+
+                  {/* Demo Button - Primary CTA */}
+                  <Button
+                    onClick={startDemo}
+                    disabled={isDemoLoading}
+                    size="lg"
+                    className="mb-6 h-11 px-6 gap-2 bg-gradient-to-r from-[#00808F] to-[#006d7a] hover:from-[#006d7a] hover:to-[#005a66] dark:from-[#00F0FF] dark:to-[#00c4cc] dark:hover:from-[#00c4cc] dark:hover:to-[#00a3aa] dark:text-black font-semibold shadow-lg shadow-[#00808F]/20 dark:shadow-[#00F0FF]/20 transition-all duration-200 hover:scale-[1.02]"
+                  >
+                    {isDemoLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-4 h-4" />
+                    )}
+                    Try Demo
+                  </Button>
+
                   <div className="text-xs text-muted-foreground/80 space-y-1.5">
-                    <p><span className="font-medium text-foreground">Demo</span> - Try with sample data</p>
                     <p><span className="font-medium text-foreground">Stdio</span> - Local MCP servers</p>
                     <p><span className="font-medium text-foreground">Remote</span> - HTTP/WebSocket servers</p>
                   </div>

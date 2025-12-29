@@ -54,11 +54,13 @@ function App() {
         // Listen for session events
         unsubscribeSession = await listen<{
           id: string
+          name: string
           started_at: number
         }>('session-start', (event) => {
-          console.log('Received session-start:', event.payload.id)
+          console.log('Received session-start:', event.payload.id, event.payload.name)
           addSession({
             id: event.payload.id,
+            name: event.payload.name,
             started_at: event.payload.started_at,
             message_count: 0,
             last_activity: event.payload.started_at,

@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "reticle"
+name = "mcp-reticle"
 version = "0.1.0"
 description = "Real-time debugging proxy for MCP (Model Context Protocol) servers"
 readme = "README.md"
@@ -32,7 +32,7 @@ Repository = "https://github.com/labterminal/reticle"
 Documentation = "https://github.com/labterminal/reticle#readme"
 
 [project.scripts]
-reticle = "reticle:main"
+mcp-reticle = "mcp_reticle:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["reticle"]
+packages = ["mcp_reticle"]

@@ -50,14 +50,12 @@ export function ControlBar() {
   const [proxyPort, setProxyPort] = useState(3001)
   const [sessionName, setSessionName] = useState('')
 
-  // Recording state
-  const [isRecording, setIsRecording] = useState(false)
-  const [isRecordingLoading, setIsRecordingLoading] = useState(false)
+  // Recording state - use store for global access
+  const { isRecording, setRecording, clearLogs } = useReticleStore()
+  const [isRecordingLoading, setRecordingLoading] = useState(false)
   const [recordedSessions, setRecordedSessions] = useState<RecordedSession[]>([])
   const [showSessions, setShowSessions] = useState(false)
   const [sessionToDelete, setSessionToDelete] = useState<RecordedSession | null>(null)
-
-  const { clearLogs } = useReticleStore()
 
   // Load recorded sessions on mount
   useEffect(() => {
@@ -70,7 +68,7 @@ export function ControlBar() {
       unsubscribeStarted = await listen<{ session_id: string; session_name: string }>(
         'recording-started',
         (event) => {
-          setIsRecording(true)
+          setRecording(true)
           toast.success('Recording started', {
             description: `Session: ${event.payload.session_name}`,
           })
@@ -81,7 +79,7 @@ export function ControlBar() {
       unsubscribeStopped = await listen<{ message_count: number; duration_ms: number }>(
         'recording-stopped',
         () => {
-          setIsRecording(false)
+          setRecording(false)
           toast.success('Recording stopped')
           checkRecordingStatus()
           loadSessions()
@@ -124,29 +122,13 @@ export function ControlBar() {
         message_count: number
         duration_seconds: number
       }>('get_recording_status')
-      setIsRecording(status.is_recording)
+      setRecording(status.is_recording)
     } catch (error) {
       console.error('Failed to check recording status:', error)
     }
   }
 
   // Proxy controls
-  const startDemo = async () => {
-    setIsProxyLoading(true)
-    try {
-      await invoke('start_proxy', { command: 'demo', args: [] })
-      setIsProxyRunning(true)
-      toast.success('Demo started successfully')
-    } catch (error) {
-      console.error('Demo start error:', error)
-      toast.error('Failed to start demo', {
-        description: typeof error === 'string' ? error : (error instanceof Error ? error.message : String(error)),
-      })
-    } finally {
-      setIsProxyLoading(false)
-    }
-  }
-
   const startProxy = async () => {
     setIsProxyLoading(true)
     try {
@@ -206,7 +188,7 @@ export function ControlBar() {
 
   // Recording controls
   const startRecording = async () => {
-    setIsRecordingLoading(true)
+    setRecordingLoading(true)
     try {
       await invoke('start_recording', { sessionName: null })
       toast.success('Recording started')
@@ -216,12 +198,12 @@ export function ControlBar() {
         description: error instanceof Error ? error.message : 'Unknown error',
       })
     } finally {
-      setIsRecordingLoading(false)
+      setRecordingLoading(false)
     }
   }
 
   const stopRecording = async () => {
-    setIsRecordingLoading(true)
+    setRecordingLoading(true)
     try {
       await invoke('stop_recording')
       toast.success('Recording stopped and saved')
@@ -234,7 +216,7 @@ export function ControlBar() {
         description: errorMessage,
       })
     } finally {
-      setIsRecordingLoading(false)
+      setRecordingLoading(false)
     }
   }
 
@@ -295,21 +277,6 @@ export function ControlBar() {
       <div className="flex items-center justify-between px-4 py-2 gap-4">
         {/* Left: Proxy Controls */}
         <div className="flex items-center gap-2">
-          <Button
-            onClick={startDemo}
-            disabled={isProxyRunning || isProxyLoading}
-            size="sm"
-            variant="outline"
-            className="h-8 gap-1.5"
-          >
-            {isProxyLoading ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Play className="h-3.5 w-3.5" />
-            )}
-            <span className="text-xs">Demo</span>
-          </Button>
-
           {/* Transport Toggle - Surfaced for quick access */}
           <div className="flex items-center bg-muted/50 rounded-md p-0.5">
             <Button

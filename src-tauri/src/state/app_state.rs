@@ -1,11 +1,31 @@
 use std::path::PathBuf;
 use std::sync::Arc;
-use tokio::sync::Mutex;
+use tokio::sync::{broadcast, Mutex};
 
 use crate::config::AppConfig;
 use crate::core::{SessionRecorder, TokenCounter};
 use crate::state::ProxyState;
 use crate::storage::SessionStorage;
+
+/// CLI bridge state
+pub struct CliBridgeState {
+    /// Whether the bridge is running
+    pub is_running: bool,
+    /// Port the bridge is listening on
+    pub port: u16,
+    /// Shutdown sender
+    pub shutdown_tx: Option<broadcast::Sender<()>>,
+}
+
+impl Default for CliBridgeState {
+    fn default() -> Self {
+        Self {
+            is_running: false,
+            port: 9315, // Default CLI bridge port
+            shutdown_tx: None,
+        }
+    }
+}
 
 /// Global application state
 ///
@@ -26,6 +46,9 @@ pub struct AppState {
 
     /// Token counter for context profiling
     pub token_counter: Arc<TokenCounter>,
+
+    /// CLI bridge state (WebSocket server for CLI instances)
+    pub cli_bridge: Arc<Mutex<CliBridgeState>>,
 }
 
 impl AppState {
@@ -42,6 +65,7 @@ impl AppState {
             recorder: Arc::new(Mutex::new(None)),
             storage: Arc::new(storage),
             token_counter: Arc::new(TokenCounter::new()),
+            cli_bridge: Arc::new(Mutex::new(CliBridgeState::default())),
         }
     }
 
@@ -58,6 +82,7 @@ impl AppState {
             recorder: Arc::new(Mutex::new(None)),
             storage: Arc::new(storage),
             token_counter: Arc::new(TokenCounter::new()),
+            cli_bridge: Arc::new(Mutex::new(CliBridgeState::default())),
         }
     }
 

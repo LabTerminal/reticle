@@ -1,5 +1,6 @@
 use crate::core::TokenCounter;
 use crate::events::{LogEvent, SessionStartEvent};
+use reticle_core::session_names::generate_session_name;
 
 /// Pre-filled mock data for demo mode
 pub struct MockData {
@@ -17,9 +18,11 @@ impl MockData {
         let base_timestamp = 1734720000000000u64; // Fixed timestamp for consistency
         let server_name_owned = server_name.to_string();
 
+        // Generate a beautiful session name for demo mode
+        let beautiful_name = generate_session_name();
         let session = SessionStartEvent {
             id: session_id.clone(),
-            name: format!("Demo: {server_name}"),
+            name: format!("demo-{beautiful_name}"),
             started_at: base_timestamp,
         };
 
@@ -259,7 +262,7 @@ mod tests {
         let data = MockData::generate();
 
         assert_eq!(data.session.id, "demo-session-12345");
-        assert!(data.logs.len() > 0);
+        assert!(!data.logs.is_empty());
     }
 
     #[test]
@@ -267,6 +270,11 @@ mod tests {
         let data = MockData::generate_for_server("test-server");
 
         assert_eq!(data.session.id, "demo-session-12345");
+        // Session name should start with "demo-" and have a beautiful name
+        assert!(
+            data.session.name.starts_with("demo-"),
+            "Session name should start with 'demo-'"
+        );
 
         // All logs should have the specified server name
         for log in &data.logs {
@@ -396,8 +404,8 @@ mod tests {
         let incoming: Vec<_> = data.logs.iter().filter(|l| l.direction == "in").collect();
         let outgoing: Vec<_> = data.logs.iter().filter(|l| l.direction == "out").collect();
 
-        assert!(incoming.len() > 0, "Should have incoming messages");
-        assert!(outgoing.len() > 0, "Should have outgoing messages");
+        assert!(!incoming.is_empty(), "Should have incoming messages");
+        assert!(!outgoing.is_empty(), "Should have outgoing messages");
     }
 
     #[test]
@@ -445,7 +453,7 @@ mod tests {
             .collect();
 
         assert!(
-            responses_with_duration.len() > 0,
+            !responses_with_duration.is_empty(),
             "Should have responses with durations"
         );
     }

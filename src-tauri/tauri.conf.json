@@ -5,11 +5,33 @@
   "identifier": "com.reticle.app",
   "build": {
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "cd ../frontend && npm run build",
+    "beforeBuildCommand": "npm run build --prefix ../frontend",
     "frontendDist": "../frontend/dist"
   },
   "bundle": {
-    "active": false
+    "active": true,
+    "targets": ["app", "dmg", "deb", "rpm", "appimage", "nsis", "msi"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    },
+    "windows": {
+      "wix": null,
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    },
+    "linux": {
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    }
   },
   "app": {
     "windows": [

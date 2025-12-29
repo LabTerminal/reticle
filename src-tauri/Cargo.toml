@@ -1,5 +1,5 @@
 [package]
-name = "reticle"
+name = "reticle-app"
 version = "0.1.0"
 description = "Real-time debugging tool for Model Context Protocol (MCP) servers with dual transport support"
 authors = ["Reticle Team"]
@@ -12,7 +12,7 @@ edition = "2021"
 rust-version = "1.70"
 
 [[bin]]
-name = "reticle"
+name = "reticle-app"
 path = "src/main.rs"
 
 [build-dependencies]
@@ -41,6 +41,7 @@ async-trait = "0.1"
 dirs = "5.0"
 getrandom = "0.2"
 hex = "0.4"
+once_cell = "1.19"
 
 # Error handling
 thiserror = "1.0"

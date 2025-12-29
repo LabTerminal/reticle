@@ -247,9 +247,11 @@ interface QuickTagInputProps {
   sessionId: string
   /** If true, only update local store (for demo mode) */
   localOnly?: boolean
+  /** If true, tags are added to active recording session (persists when recording stops) */
+  isRecording?: boolean
 }
 
-export function QuickTagInput({ sessionId, localOnly = false }: QuickTagInputProps) {
+export function QuickTagInput({ sessionId, localOnly = false, isRecording = false }: QuickTagInputProps) {
   const [newTag, setNewTag] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const { updateSessionTags, setAvailableTags, availableTags, sessions } = useReticleStore()
@@ -268,12 +270,18 @@ export function QuickTagInput({ sessionId, localOnly = false }: QuickTagInputPro
 
     setIsLoading(true)
     try {
-      // Only call backend if not in local-only mode
+      // Use appropriate backend command based on mode
       if (!localOnly) {
-        await invoke('add_session_tags', {
-          sessionId,
-          tags: [tagToAdd],
-        })
+        if (isRecording) {
+          // Add tag to active recording (will persist when recording stops)
+          await invoke('add_recording_tag', { tag: tagToAdd })
+        } else {
+          // Add tag to stored session
+          await invoke('add_session_tags', {
+            sessionId,
+            tags: [tagToAdd],
+          })
+        }
       }
 
       const updatedTags = [...currentTags, tagToAdd]
@@ -295,12 +303,18 @@ export function QuickTagInput({ sessionId, localOnly = false }: QuickTagInputPro
   const handleRemoveTag = async (tag: string) => {
     setIsLoading(true)
     try {
-      // Only call backend if not in local-only mode
+      // Use appropriate backend command based on mode
       if (!localOnly) {
-        await invoke('remove_session_tags', {
-          sessionId,
-          tags: [tag],
-        })
+        if (isRecording) {
+          // Remove tag from active recording
+          await invoke('remove_recording_tag', { tag })
+        } else {
+          // Remove tag from stored session
+          await invoke('remove_session_tags', {
+            sessionId,
+            tags: [tag],
+          })
+        }
       }
 
       const updatedTags = currentTags.filter((t) => t !== tag)
