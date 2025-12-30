@@ -1,7 +1,7 @@
 class McpReticle < Formula
   desc "Real-time debugging proxy for MCP (Model Context Protocol) servers"
   homepage "https://github.com/labterminal/mcp-reticle"
-  version "0.1.0-rc.6"
+  version "0.1.0-rc.7"
   license "BSL-1.1"
 
   on_macos do
