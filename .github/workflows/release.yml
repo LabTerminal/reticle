@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 env:
   CARGO_TERM_COLOR: always
@@ -419,7 +420,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout main
+          git fetch origin main
+          git checkout -B main origin/main
           git add Formula/mcp-reticle.rb
           git commit -m "Update Homebrew formula for ${{ github.ref_name }}"
           git push origin main
